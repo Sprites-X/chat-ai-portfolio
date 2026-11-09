@@ -1,0 +1,20 @@
+# ค่า ${PORT} และ ${BE_URL} ถูกแทนตอน container เริ่ม (ตั้ง BE_URL ที่หน้า Environment ของ service FE บน Render)
+# BE_URL ต้องขึ้นต้นด้วย https:// และห้ามมี / ท้าย เช่น https://chat-ai-portfolio-be.onrender.com
+server {
+    listen ${PORT};
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # คำขอที่ขึ้นต้นด้วย /api/ ส่งต่อไปที่ BE ทั้ง path เช่น /api/chat → ${BE_URL}/api/chat
+    # หน้าเว็บจึงเรียก fetch('/api/chat') ได้ตรง ๆ ไม่ต้องรู้ URL ของ BE และไม่ติด CORS
+    location /api/ {
+        proxy_pass ${BE_URL};
+        proxy_ssl_server_name on;   # ส่งชื่อโดเมนตอนต่อ HTTPS (Render ต้องใช้)
+        proxy_read_timeout 90s;     # เผื่อ BE แบบฟรีกำลังตื่น หรือ Gemini ตอบช้า
+    }
+
+    # ทุก path อื่นตอบ index.html ให้ React จัดการเส้นทางเอง (รีเฟรชหน้า /chat แล้วไม่ขึ้น 404)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -65,7 +65,9 @@ BE แนบข้อมูล Portfolio เป็น system instruction แล�
 │  ├─ .env.example
 │  └─ package.json
 ├─ FE/                  # React app
-│  ├─ Dockerfile
+│  ├─ Dockerfile        # build ด้วย Node แล้วเสิร์ฟด้วย nginx
+│  ├─ nginx/
+│  │  └─ default.conf.template  # ส่ง /api ต่อไปที่ BE ตามค่า BE_URL
 │  └─ src/
 ├─ .github/workflows/
 │  └─ ci-cd.yml         # pipeline CI/CD
@@ -107,7 +109,25 @@ curl -X POST http://localhost:5000/api/chat \
 
 ### Frontend
 
-<!-- TODO (FE): วิธีติดตั้งและรัน FE ในเครื่อง และวิธีตั้ง URL ของ BE -->
+<!-- TODO (FE): ตรวจคำสั่งให้ตรงกับโปรเจกต์ FE จริง -->
+
+```bash
+cd <repo-folder>/FE
+npm ci
+npm run dev
+```
+
+หน้าเว็บเรียก BE ด้วย path สั้น `/api/chat` เสมอ ตอนรันในเครื่องให้ dev server ส่งต่อไปที่ BE (ตั้งใน `vite.config.js`):
+
+```js
+server: {
+  proxy: {
+    '/api': { target: 'https://chat-ai-portfolio-be.onrender.com', changeOrigin: true },
+  },
+},
+```
+
+บน Render หน้าที่นี้เป็นของ nginx ใน image ของ FE ซึ่งส่ง `/api/*` ต่อไปที่ `BE_URL`
 
 > ห้าม commit ไฟล์ `BE/.env` ขึ้น repo ไฟล์นี้อยู่ใน `.gitignore` และ `.dockerignore` แล้ว
 
@@ -126,7 +146,12 @@ curl -X POST http://localhost:5000/api/chat \
 
 > หากไม่ได้ตั้ง `GEMINI_API_KEY` บอทจะตอบเป็นข้อความ `[ระบบตอบรับอัตโนมัติ]` แทนคำตอบจาก AI
 
-<!-- TODO (FE): ตัวแปรของ FE เช่น URL ของ BE -->
+**Frontend** (หน้า Environment ของ service FE บน Render)
+
+| ตัวแปร | คำอธิบาย | ตัวอย่าง |
+|---|---|---|
+| `BE_URL` | URL ของ BE ขึ้นต้นด้วย `https://` และ**ห้ามมี `/` ท้าย** | `https://chat-ai-portfolio-be.onrender.com` |
+| `PORT` | พอร์ตของ nginx (Render ตั้งให้เอง) | `80` |
 
 ## API
 
@@ -236,7 +261,7 @@ test ยังรันทุกครั้ง ถ้าต้องการ d
 2. เตรียม connection string ของฐานข้อมูลบน **Neon**
 3. สร้าง **Web Service** บน Render จาก image `docker.io/<user>/portfolio-be:latest` (Singapore) แล้วตั้ง `DATABASE_URL`, `GEMINI_API_KEY`
 4. ทดสอบด้วย `curl -X POST https://<ชื่อ-be>.onrender.com/api/chat -H "Content-Type: application/json" -d '{"message":"สวัสดี"}'` ต้องได้ `reply` กลับมา
-5. สร้าง **Web Service** จาก image `docker.io/<user>/portfolio-fe:latest` (Singapore) แล้วตั้ง URL ของ BE
+5. สร้าง **Web Service** จาก image `docker.io/<user>/portfolio-fe:latest` (Singapore) แล้วตั้ง `BE_URL` = `https://chat-ai-portfolio-be.onrender.com` (ไม่มี `/` ท้าย)
 6. คัดลอก Deploy Hook ของทั้งสอง service (Settings → Deploy Hook) ไปใส่ใน GitHub Secrets
 7. จากนั้นทุกครั้งที่ push เข้า `main` เว็บจะอัปเดตเอง
 
@@ -246,6 +271,9 @@ test ยังรันทุกครั้ง ถ้าต้องการ d
 |---|---|---|
 | บอทตอบ `[ระบบตอบรับอัตโนมัติ] ...` | ไม่ได้ตั้ง `GEMINI_API_KEY` บน Render | ใส่ key ที่หน้า Environment ของ BE |
 | แชตได้ `500` | ต่อฐานข้อมูลไม่ได้ หรือ Gemini ตอบ error | ดู Logs ของ BE บน Render แล้วตรวจ `DATABASE_URL` และ key |
+| FE ไม่ขึ้นเลย log ขึ้น `unknown "be_url" variable` | ไม่ได้ตั้ง `BE_URL` ที่ service FE | ใส่ `BE_URL` ในหน้า Environment |
+| FE ไม่ขึ้นเลย log ขึ้น `invalid URL prefix` | `BE_URL` ไม่มี `https://` นำหน้า | ใส่ `https://` นำหน้า |
+| แชตได้ 404 แต่เปิดหน้าเว็บได้ | `BE_URL` มี `/` ท้าย ทำให้ path `/api` หายไประหว่างส่งต่อ | ลบ `/` ท้าย `BE_URL` |
 | เปิดเว็บครั้งแรกแชตไม่ได้ | BE แบบ Free กำลังหลับ | เปิดลิงก์ BE รอประมาณ 1 นาที (ขึ้น `Cannot GET /` ถือว่าตื่นแล้ว) แล้วรีเฟรชหน้าเว็บ |
 | `test-be` ไม่ผ่าน | แก้ response ของ BE แต่ไม่ได้แก้ test | ดู expected/actual ใน log แล้วแก้ test ให้ตรง |
 | `docker login: unauthorized` หรือ image ชื่อ `/portfolio-be` | ไม่ได้ตั้ง `DOCKERHUB_USERNAME` ในแท็บ Variables, ชื่อ secret ผิด หรือ token หมดอายุ | ตรวจชื่อและแท็บที่ใส่ แล้วสร้าง token ใหม่ |

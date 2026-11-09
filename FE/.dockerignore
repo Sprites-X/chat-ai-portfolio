@@ -1,0 +1,12 @@
+# ไม่ให้ของลับหรือไฟล์ที่ไม่จำเป็นติดเข้าไปใน image (image บน Docker Hub เป็น public)
+.env
+.env.*
+!.env.example
+node_modules
+dist
+build
+npm-debug.log*
+.git
+Dockerfile
+.dockerignore
+README.md
