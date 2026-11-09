@@ -35,14 +35,15 @@ initDb();
 // 3. กำหนดข้อมูล Context ของ Portfolio กลุ่ม และสมาชิก
 const PORTFOLIO_CONTEXT = `
 ข้อมูลกลุ่ม:
-- ชื่อกลุ่ม: DevTeam Alpha
+- ชื่อกลุ่ม: ByteMind
 - ผลงาน: เว็บไซต์แนะนำ Portfolio กลุ่ม พร้อมระบบ Chatbot AI อัจฉริยะ
 
-ข้อมูลสมาชิก:
-1. สมาชิกคนที่ 1: Frontend Developer (พัฒนา UI หน้าเว็บและหน้าแชทด้วย React)
-2. สมาชิกคนที่ 2 (ฉัน): Backend Developer (สร้าง Express API, จัดการ PostgreSQL และ AI Context Integration)
-3. สมาชิกคนที่ 3: DevOps (จัดการ CI/CD Pipeline และการ Deploy ระบบ)
+ข้อมูลสมาชิกในทีม ByteMind:
+1. นาย พงศกร ศรีทอง (DevOps / Developer) - E-mail: phongsakon.sith@bumail.net
+2. น.ส. ณัฐนิชา ภูสิงห์ (Backend Developer) - E-mail: natnicha.phoo@bumail.net
+3. น.ส. วรรณพร แก้วหาวงศ์ (Frontend Developer) - E-mail: wannaporn.kaeo@bumail.net
 `;
+
 
 // 4. API Endpoint รองรับการรับ-ส่งข้อความแชท
 app.post('/api/chat', async (req, res) => {
