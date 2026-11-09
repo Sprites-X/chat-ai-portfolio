@@ -1,10 +1,10 @@
-# <ชื่อกลุ่ม> · Chat AI Portfolio
+# ByteMind · Chat AI Portfolio
 
 เว็บแอป Portfolio ของกลุ่ม ที่ผู้เยี่ยมชมพูดคุยกับ AI เพื่อถามเรื่องราว ผลงาน และทักษะของกลุ่มและสมาชิกแต่ละคนได้
 
 **Live demo**
 - เว็บไซต์: https://<ชื่อ-fe>.onrender.com
-- Backend API: https://<ชื่อ-be>.onrender.com
+- Backend API: https://chat-ai-portfolio-be.onrender.com
 
 > ใช้ Render แบบ Free: หากไม่มีผู้ใช้งาน 15 นาที service จะหลับ การเปิดครั้งแรกต้องรอประมาณ 1 นาที
 
