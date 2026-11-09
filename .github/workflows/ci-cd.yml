@@ -1,0 +1,181 @@
+# ============================================================
+# CI/CD : Chat AI + Portfolio (BE + FE) บน GitHub Actions
+#
+# ทุก branch และทุก Pull Request : test-be, test-fe
+# push เข้า main เท่านั้น       : test → build → scan → deploy ขึ้น Render
+#
+# ตั้งค่าที่ GitHub → Settings → Secrets and variables → Actions
+#   Variables (ค่าธรรมดา)
+#     DOCKERHUB_USERNAME      ชื่อบัญชี Docker Hub
+#   Secrets (ค่าลับ ถูกซ่อนใน log อัตโนมัติ)
+#     DOCKERHUB_TOKEN         Docker Hub access token
+#     RENDER_DEPLOY_HOOK_BE   Deploy Hook URL ของ BE
+#     RENDER_DEPLOY_HOOK_FE   Deploy Hook URL ของ FE
+#
+# ลำดับขั้นใช้ needs: job ถัดไปจะเริ่มก็ต่อเมื่อ job ก่อนหน้าผ่าน
+# BE กับ FE แยกสายกัน ถ้าฝั่งหนึ่งพัง อีกฝั่งยัง deploy ได้
+# ============================================================
+
+name: CI/CD
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # กดรันเองได้จากแท็บ Actions
+
+# ให้ token ของ workflow อ่าน repo ได้อย่างเดียว
+permissions:
+  contents: read
+
+jobs:
+  # ---------- ตรวจว่ามีโฟลเดอร์ BE / FE หรือยัง ----------
+  # ฝั่งที่ยังไม่มีโค้ด job จะขึ้น skipped แทนที่จะพัง
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      has-be: ${{ steps.check.outputs.has-be }}
+      has-fe: ${{ steps.check.outputs.has-fe }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: check
+        run: |
+          for app in be fe; do
+            dir=$(echo "$app" | tr '[:lower:]' '[:upper:]')
+            if [ -f "$dir/package.json" ]; then
+              echo "has-$app=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has-$app=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+  # ================= BACKEND =================
+
+  # ---------- STAGE: test (ทุก branch) ----------
+  test-be:
+    needs: detect
+    if: needs.detect.outputs.has-be == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BE
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: BE/package-lock.json
+      - run: npm ci
+      - name: ตรวจ syntax
+        run: node --check index.js
+      - name: รัน test (ไฟล์ *.test.js ในโฟลเดอร์ BE)
+        run: node --test
+
+  # ---------- STAGE: build (main เท่านั้น) ----------
+  build-be:
+    needs: test-be
+    # เหมือน rules: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH ใน GitLab
+    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-be
+    steps:
+      - uses: actions/checkout@v7
+      - name: login Docker Hub
+        run: echo "$DOCKERHUB_TOKEN" | docker login -u "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      # runner เป็น Linux amd64 อยู่แล้ว จึงไม่ต้องระบุ --platform และไม่ต้องใช้ dind
+      - name: build และ push :latest กับ :SHA
+        run: |
+          docker build -t "$IMAGE:latest" -t "$IMAGE:${GITHUB_SHA::7}" ./BE
+          docker push "$IMAGE" --all-tags
+
+  # ---------- STAGE: scan ----------
+  scan-be:
+    needs: build-be
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-be
+    steps:
+      # รายงาน HIGH + CRITICAL ให้อ่าน ไม่ทำให้ job พัง
+      - name: trivy รายงาน
+        run: |
+          docker run --rm aquasec/trivy:0.58.0 image --exit-code 0 \
+            --severity HIGH,CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
+      # ด่านตรวจ: พังเมื่อเจอ CRITICAL ที่มีเวอร์ชันแก้แล้ว
+      - name: trivy ด่านตรวจ CRITICAL
+        run: |
+          docker run --rm aquasec/trivy:0.58.0 image --exit-code 1 \
+            --severity CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
+
+  # ---------- STAGE: deploy ----------
+  deploy-be:
+    needs: scan-be
+    runs-on: ubuntu-latest
+    steps:
+      # -f ทำให้ job พังเมื่อ Render ตอบกลับเป็น error
+      - run: curl -fsS -X POST "$DEPLOY_HOOK"
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_BE }}
+
+  # ================= FRONTEND =================
+
+  test-fe:
+    needs: detect
+    if: needs.detect.outputs.has-fe == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: FE
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: FE/package-lock.json
+      - run: npm ci
+      - run: npm test --if-present
+      - run: npm run build # build ผ่าน = React compile ได้ไม่มี error
+
+  build-fe:
+    needs: test-fe
+    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-fe
+    steps:
+      - uses: actions/checkout@v7
+      - name: login Docker Hub
+        run: echo "$DOCKERHUB_TOKEN" | docker login -u "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: build และ push :latest กับ :SHA
+        run: |
+          docker build -t "$IMAGE:latest" -t "$IMAGE:${GITHUB_SHA::7}" ./FE
+          docker push "$IMAGE" --all-tags
+
+  scan-fe:
+    needs: build-fe
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-fe
+    steps:
+      - name: trivy รายงาน
+        run: |
+          docker run --rm aquasec/trivy:0.58.0 image --exit-code 0 \
+            --severity HIGH,CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
+      - name: trivy ด่านตรวจ CRITICAL
+        run: |
+          docker run --rm aquasec/trivy:0.58.0 image --exit-code 1 \
+            --severity CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
+
+  deploy-fe:
+    needs: scan-fe
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -X POST "$DEPLOY_HOOK"
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_FE }}

@@ -1,0 +1,16 @@
+# dependency ติดตั้งใหม่ได้ด้วย npm ci
+node_modules/
+
+# ของลับ ห้าม commit (ยกเว้นไฟล์ตัวอย่าง)
+.env
+.env.*
+!.env.example
+
+# ไฟล์ที่ build ออกมา
+dist/
+build/
+
+# log และไฟล์ระบบ
+npm-debug.log*
+.DS_Store
+Thumbs.db
