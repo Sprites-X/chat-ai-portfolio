@@ -122,6 +122,7 @@ curl -X POST http://localhost:5000/api/chat \
 | `DATABASE_URL` | connection string ของ PostgreSQL | `postgresql://user:password@host/dbname?sslmode=require` |
 | `GEMINI_API_KEY` | Gemini API key | `your_gemini_api_key` |
 | `PORT` | พอร์ตของ server (Render ตั้งให้เอง) | `5000` |
+| `GEMINI_MODEL` | ชื่อโมเดล Gemini (ไม่ใส่ก็ได้) | `gemini-3.8-flash` |
 
 > หากไม่ได้ตั้ง `GEMINI_API_KEY` บอทจะตอบเป็นข้อความ `[ระบบตอบรับอัตโนมัติ]` แทนคำตอบจาก AI
 
@@ -155,7 +156,7 @@ Response `200`:
 ## AI ตอบจากข้อมูลอะไร
 
 ข้อมูล Portfolio ของกลุ่มและสมาชิกทุกคนเก็บไว้ในค่าคงที่ `PORTFOLIO_CONTEXT` ใน `BE/index.js`
-ทุกครั้งที่มีคำถาม BE จะส่งข้อมูลนี้ให้ Gemini (โมเดล `gemini-2.5-flash`) เป็น `systemInstruction` และกำหนดให้ตอบโดยอ้างอิงข้อมูลนี้เท่านั้น
+ทุกครั้งที่มีคำถาม BE จะส่งข้อมูลนี้ให้ Gemini (โมเดล `gemini-3.8-flash`) เป็น `systemInstruction` และกำหนดให้ตอบโดยอ้างอิงข้อมูลนี้เท่านั้น
 
 <!-- TODO (BE): อัปเดตเมื่อเปลี่ยนวิธีเก็บข้อมูล Portfolio -->
 
