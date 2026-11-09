@@ -55,7 +55,7 @@ app.post('/api/chat', async (req, res) => {
     if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'ยังไม่ต้องใส่ก็ได้ครับ') {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
         contents: message,
         config: {
           systemInstruction: `คุณคือ AI ผู้ช่วยตอบคำถามเกี่ยวกับกลุ่ม อ้างอิงข้อมูลนี้เท่านั้น: ${PORTFOLIO_CONTEXT}`
