@@ -3,6 +3,7 @@
 #
 # ทุก branch และทุก Pull Request : test-be, test-fe
 # push เข้า main เท่านั้น       : test → build → scan → deploy ขึ้น Render
+#                                 เฉพาะฝั่งที่โค้ดเปลี่ยน (แก้แค่ไฟล์ .md จะไม่ build/deploy)
 #
 # ตั้งค่าที่ GitHub → Settings → Secrets and variables → Actions
 #   Variables (ค่าธรรมดา)
@@ -29,24 +30,51 @@ permissions:
   contents: read
 
 jobs:
-  # ---------- ตรวจว่ามีโฟลเดอร์ BE / FE หรือยัง ----------
-  # ฝั่งที่ยังไม่มีโค้ด job จะขึ้น skipped แทนที่จะพัง
+  # ---------- ตรวจก่อนเริ่มว่าแต่ละฝั่งต้องทำอะไร ----------
+  # has-xx     : มีโค้ดฝั่งนั้นแล้วหรือยัง ถ้ายังไม่มี job ฝั่งนั้นจะขึ้น skipped แทนที่จะพัง
+  # xx-changed : push ครั้งนี้แก้โค้ดฝั่งนั้นไหม ถ้าไม่ได้แก้ก็ไม่ต้อง build/deploy ใหม่
   detect:
     runs-on: ubuntu-latest
     outputs:
       has-be: ${{ steps.check.outputs.has-be }}
       has-fe: ${{ steps.check.outputs.has-fe }}
+      be-changed: ${{ steps.check.outputs.be-changed }}
+      fe-changed: ${{ steps.check.outputs.fe-changed }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # ดึงประวัติ commit ทั้งหมด เพื่อเทียบว่าไฟล์ไหนเปลี่ยน
       - id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }} # commit ล่าสุดของ branch ก่อน push ครั้งนี้
         run: |
+          # รายชื่อไฟล์ที่ push ครั้งนี้แก้ (ไม่นับไฟล์ .md)
+          # ถ้าเทียบไม่ได้ เช่น Pull Request, กดรันเอง หรือ push branch ใหม่ ให้ถือว่าเปลี่ยนทุกฝั่ง
+          if [ "$EVENT" = "push" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            all=false
+            changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -v '\.md$' || true)
+          else
+            all=true
+            changed=""
+          fi
+          echo "ไฟล์โค้ดที่เปลี่ยน:"; echo "${changed:-(ไม่มี หรือเทียบไม่ได้)}"
+
           for app in be fe; do
             dir=$(echo "$app" | tr '[:lower:]' '[:upper:]')
-            if [ -f "$dir/package.json" ]; then
-              echo "has-$app=true" >> "$GITHUB_OUTPUT"
+
+            if [ -f "$dir/package.json" ]; then has=true; else has=false; fi
+
+            # แก้ไฟล์ในโฟลเดอร์ของฝั่งนั้น หรือแก้ workflow เอง = ต้อง build ใหม่
+            if [ "$all" = true ] || echo "$changed" | grep -Eq "^($dir/|\.github/workflows/)"; then
+              chg=true
             else
-              echo "has-$app=false" >> "$GITHUB_OUTPUT"
+              chg=false
             fi
+
+            echo "has-$app=$has" >> "$GITHUB_OUTPUT"
+            echo "$app-changed=$chg" >> "$GITHUB_OUTPUT"
+            echo "$dir: has=$has changed=$chg"
           done
 
   # ================= BACKEND =================
@@ -74,9 +102,12 @@ jobs:
 
   # ---------- STAGE: build (main เท่านั้น) ----------
   build-be:
-    needs: test-be
-    # เหมือน rules: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH ใน GitLab
-    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+    needs: [detect, test-be]
+    # main เท่านั้น (เหมือน rules: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH ใน GitLab) และโค้ด BE ต้องเปลี่ยน
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref_name == github.event.repository.default_branch &&
+      needs.detect.outputs.be-changed == 'true'
     runs-on: ubuntu-latest
     env:
       IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-be
@@ -141,8 +172,11 @@ jobs:
       - run: npm run build # build ผ่าน = React compile ได้ไม่มี error
 
   build-fe:
-    needs: test-fe
-    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+    needs: [detect, test-fe]
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref_name == github.event.repository.default_branch &&
+      needs.detect.outputs.fe-changed == 'true'
     runs-on: ubuntu-latest
     env:
       IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-fe

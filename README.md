@@ -202,12 +202,20 @@ flowchart LR
 | ขั้น | Job | ทำอะไร | ทำงานเมื่อ |
 |---|---|---|---|
 | test | `test-be`, `test-fe` | ตรวจ syntax, test และ build ของ BE/FE | ทุก branch และ Pull Request |
-| build | `build-be`, `build-fe` | build Docker image แล้ว push `:latest` และ `:<commit SHA>` ขึ้น Docker Hub | push เข้า `main` |
-| scan | `scan-be`, `scan-fe` | ตรวจช่องโหว่ด้วย Trivy ไม่ผ่านเมื่อพบ CRITICAL ที่แก้ไขได้แล้ว | push เข้า `main` |
-| deploy | `deploy-be`, `deploy-fe` | เรียก Deploy Hook ให้ Render ดึง image ล่าสุด | push เข้า `main` |
+| build | `build-be`, `build-fe` | build Docker image แล้ว push `:latest` และ `:<commit SHA>` ขึ้น Docker Hub | push เข้า `main` และโค้ดฝั่งนั้นเปลี่ยน |
+| scan | `scan-be`, `scan-fe` | ตรวจช่องโหว่ด้วย Trivy ไม่ผ่านเมื่อพบ CRITICAL ที่แก้ไขได้แล้ว | หลัง build ผ่าน |
+| deploy | `deploy-be`, `deploy-fe` | เรียก Deploy Hook ให้ Render ดึง image ล่าสุด | หลัง scan ผ่าน |
 
 แต่ละ job ต่อกันด้วย `needs` หากขั้นใดไม่ผ่าน ขั้นถัดไปจะไม่ทำงาน โค้ดที่มีปัญหาจึงไม่ถูก deploy
 สาย BE กับ FE แยกกัน ถ้าฝั่งหนึ่งพัง อีกฝั่งยัง deploy ได้ และถ้ายังไม่มีโฟลเดอร์ `FE/` job ฝั่ง FE จะขึ้นเป็น skipped
+
+job `detect` เทียบไฟล์ที่ push แต่ละครั้งแก้ แล้ว build/deploy **เฉพาะฝั่งที่โค้ดเปลี่ยน**
+- แก้ไฟล์ใน `BE/` → build และ deploy แค่ BE
+- แก้ไฟล์ใน `FE/` → build และ deploy แค่ FE
+- แก้ `.github/workflows/` → build ทั้งสองฝั่ง
+- แก้แค่ไฟล์ `.md` → รัน test อย่างเดียว ไม่ build ไม่ deploy
+
+test ยังรันทุกครั้ง ถ้าต้องการ deploy ใหม่ทั้งหมดโดยไม่แก้โค้ด ให้กด **Run workflow** ในแท็บ Actions
 
 **Secrets and variables** (GitHub → Settings → Secrets and variables → Actions)
 
@@ -243,5 +251,5 @@ flowchart LR
 | `docker login: unauthorized` หรือ image ชื่อ `/portfolio-be` | ไม่ได้ตั้ง `DOCKERHUB_USERNAME` ในแท็บ Variables, ชื่อ secret ผิด หรือ token หมดอายุ | ตรวจชื่อและแท็บที่ใส่ แล้วสร้าง token ใหม่ |
 | deploy ได้ 401/404 หรือ `no URL specified` | Hook URL ผิด ถูก Regenerate หรือยังไม่ได้ตั้ง secret | คัดลอก URL ใหม่ไปใส่ใน Secrets |
 | scan ได้ `UNAUTHORIZED` หรือหา image ไม่เจอ | repo ของ image บน Docker Hub ตั้งเป็น private | ตั้ง repo `portfolio-be` / `portfolio-fe` บน Docker Hub เป็น public |
-| build/scan/deploy ขึ้น skipped | push ไป branch อื่น หรือเป็น Pull Request | merge เข้า `main` |
+| build/scan/deploy ขึ้น skipped | push ไป branch อื่น, เป็น Pull Request หรือ commit นั้นไม่ได้แก้โค้ดฝั่งนั้น (เช่น แก้แค่ `.md`) | merge เข้า `main` หรือกด Run workflow ในแท็บ Actions เพื่อ deploy ใหม่ทั้งหมด |
 | pipeline เขียวแต่เว็บไม่เปลี่ยน | service บน Render ไม่ได้ชี้ไปที่ `:latest` | ตรวจ image URL ใน Settings ของ service บน Render |
