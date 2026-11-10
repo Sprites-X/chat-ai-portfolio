@@ -1,82 +1,134 @@
-// test ของ BE รันด้วย `node --test` (pipeline รันให้ทุกครั้งที่ push)
-// เปิด server จริงด้วย `node index.js` แล้วยิง request เข้าไป จึงไม่ต้องแก้ index.js
-// ไม่ต้องใช้ฐานข้อมูลหรือ Gemini key เพราะตรวจเฉพาะ response ที่ไม่ไปถึง DB/AI
-const { describe, it, before, after } = require('node:test');
-const assert = require('node:assert/strict');
-const { spawn } = require('node:child_process');
-const net = require('node:net');
+import React, { useState } from 'react';
+import axios from 'axios';
+import { MessageSquare, User, Send, Code, Server, Layout } from 'lucide-react';
 
-let server;
-let base;
-let logs = '';
+export default function App() {
+  const [activeTab, setActiveTab] = useState('portfolio');
+  const [messages, setMessages] = useState([
+    { role: 'assistant', text: 'สวัสดีครับ! มีอะไรให้ผมช่วยไหมครับ?' }
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
-// ขอพอร์ตว่างจากระบบ จะได้ไม่ชนกับโปรแกรมอื่นในเครื่อง
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer();
-    s.once('error', reject);
-    s.listen(0, () => {
-      const { port } = s.address();
-      s.close(() => resolve(port));
-    });
-  });
-}
+  // ข้อมูลสมาชิกกลุ่ม 3 คน (ปรับเปลี่ยนชื่อได้เลย)
+ const teamMembers = [
+    { name: 'Wannaporn', role: 'Frontend Developer', icon: Layout, desc: 'พัฒนา UI/UX Portfolio และ Chat Interface' },
+    { name: 'Phrongsakon', role: 'Backend & DevOps', icon: Server, desc: 'พัฒนา API Gateway และจัดการ CI/CD Deployment' },
+    { name: 'Member Name', role: 'Fullstack / Data', icon: Code, desc: 'ดูแลส่วนข้อมูลและ Prompt Engineering' }
+  ];
+  
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
 
-before(async () => {
-  const port = await freePort();
-  base = `http://127.0.0.1:${port}`;
+    const userMessage = input;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setLoading(true);
 
-  server = spawn(process.execPath, ['index.js'], {
-    cwd: __dirname,
-    // ตั้งค่าว่างไว้ dotenv จะไม่เขียนทับ test จึงไม่ไปแตะ DB หรือ Gemini จริงแม้ในเครื่องจะมี .env
-    env: { ...process.env, PORT: String(port), DATABASE_URL: '', GEMINI_API_KEY: '' },
-  });
-  server.stdout.on('data', (d) => (logs += d));
-  server.stderr.on('data', (d) => (logs += d));
-
-  // รอจน server รับ request ได้ (สูงสุด 10 วินาที)
-  for (let i = 0; i < 100; i++) {
     try {
-      await fetch(base);
-      return;
-    } catch {
-      await new Promise((r) => setTimeout(r, 100));
+      const response = await axios.post('/api/chat', { message: userMessage });
+      const reply = response.data.reply || response.data.message || 'ได้รับคำตอบจากเซิร์ฟเวอร์แล้ว';
+      setMessages(prev => [...prev, { role: 'assistant', text: reply }]);
+    } catch (error) {
+      console.error('API Error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        text: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' 
+      }]);
+    } finally {
+      setLoading(false);
     }
-  }
-  throw new Error(`server ไม่ขึ้นภายใน 10 วินาที\n${logs}`);
-});
+  };
 
-after(() => server?.kill());
+  return (
+    <div style={{ fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
+        <button 
+          onClick={() => setActiveTab('portfolio')}
+          style={{ 
+            padding: '10px 20px', 
+            cursor: 'pointer', 
+            borderRadius: '6px', 
+            border: 'none',
+            background: activeTab === 'portfolio' ? '#0070f3' : '#f0f0f0',
+            color: activeTab === 'portfolio' ? '#fff' : '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <User size={18} /> Portfolio
+        </button>
+        <button 
+          onClick={() => setActiveTab('chat')}
+          style={{ 
+            padding: '10px 20px', 
+            cursor: 'pointer', 
+            borderRadius: '6px', 
+            border: 'none',
+            background: activeTab === 'chat' ? '#0070f3' : '#f0f0f0',
+            color: activeTab === 'chat' ? '#fff' : '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <MessageSquare size={18} /> Chat AI
+        </button>
+      </div>
 
-describe('POST /api/chat', () => {
-  const post = (body) =>
-    fetch(`${base}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-  it('ไม่มี message ได้ 400 พร้อม error', async () => {
-    const res = await post({});
-    assert.equal(res.status, 400);
-    const data = await res.json();
-    assert.ok(data.error);
-  });
-
-  it('message เป็นข้อความว่างได้ 400', async () => {
-    const res = await post({ message: '' });
-    assert.equal(res.status, 400);
-  });
-
-  it('ส่งชื่อ field ผิด (text แทน message) ได้ 400', async () => {
-    const res = await post({ text: 'สวัสดี' });
-    assert.equal(res.status, 400);
-  });
-});
-
-describe('route ที่ไม่มีอยู่', () => {
-  it('GET /api/chat ได้ 404 เพราะรับเฉพาะ POST', async () => {
-    const res = await fetch(`${base}/api/chat`);
-    assert.equal(res.status, 404);
-  });
-});
+      {activeTab === 'portfolio' ? (
+        <div>
+          <h2>🚀 Group Project Portfolio</h2>
+          <p>ยินดีต้อนรับสู่เว็บ Portfolio กลุ่ม สมาชิกผู้พัฒนาได้แก่:</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginTop: '20px' }}>
+            {teamMembers.map((member, idx) => {
+              const IconComp = member.icon;
+              return (
+                <div key={idx} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
+                  <IconComp size={40} color="#0070f3" style={{ marginBottom: '10px' }} />
+                  <h3 style={{ margin: '5px 0' }}>{member.name}</h3>
+                  <p style={{ fontWeight: 'bold', color: '#666', fontSize: '14px' }}>{member.role}</p>
+                  <p style={{ fontSize: '12px', color: '#888' }}>{member.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <h2>💬 Chat AI Assistant</h2>
+          <div style={{ height: '350px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px', overflowY: 'auto', marginBottom: '15px', background: '#fafafa' }}>
+            {messages.map((msg, index) => (
+              <div key={index} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: '10px' }}>
+                <div style={{ 
+                  maxWidth: '70%', 
+                  padding: '10px 14px', 
+                  borderRadius: '12px',
+                  background: msg.role === 'user' ? '#0070f3' : '#e9e9eb',
+                  color: msg.role === 'user' ? '#fff' : '#000'
+                }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {loading && <div style={{ color: '#888', fontStyle: 'italic' }}>AI กำลังคิดคำตอบ...</div>}
+          </div>
+          <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="พิมพ์ข้อความที่นี่..."
+              style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+            <button type="submit" disabled={loading} style={{ padding: '10px 20px', background: '#0070f3', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+              <Send size={18} />
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
