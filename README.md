@@ -12,11 +12,11 @@
 
 ## สมาชิก
 
-| ชื่อ | บทบาท | ทักษะหลัก |
-|---|---|---|
-| <ชื่อ> | Frontend (Portfolio + Chat UI) | React, ... |
-| <ชื่อ> | Backend + AI Integration | Express, PostgreSQL, Gemini API, ... |
-| <ชื่อ> | DevOps (Docker, CI/CD, Deployment) | Docker, GitHub Actions, Render, ... |
+| ชื่อ | บทบาท | ทักษะหลัก | ติดต่อ |
+|---|---|---|---|
+| วรรณพร แก้วหาวงศ์ | Frontend (Portfolio + Chat UI) | React, JavaScript, HTML/CSS, UI/UX, Component Design | wannaporn.kaeo@bumail.net |
+| ณัฐนิชา ภูสิงห์ | Backend + AI Integration | Node.js, Express, Gemini API Integration, Automated Testing (node:test), RESTful API Design, Git/GitHub | natnicha.phoo@bumail.net |
+| พงศกร ศรีทอง | DevOps (Docker, CI/CD, Deployment) | Docker, Nginx, GitHub Actions (CI/CD), Trivy, Render, Unit Test | phongsakon.sith@bumail.net |
 
 ---
 
@@ -32,7 +32,7 @@
 
 | ส่วน | เทคโนโลยี |
 |---|---|
-| Frontend | React |
+| Frontend | React 19 + Vite, axios, lucide-react เสิร์ฟด้วย Nginx |
 | Backend | Node.js 24, Express 5 (JavaScript) |
 | Database | PostgreSQL บน Neon |
 | AI | Google Gemini API (`@google/genai`) |
@@ -44,13 +44,13 @@
 
 ```mermaid
 flowchart LR
-  U[ผู้ใช้] --> FE[FE: React]
-  FE -->|POST /api/chat| BE[BE: Express API]
+  U[ผู้ใช้] --> FE[FE: React + Nginx]
+  FE -->|/api/chat| BE[BE: Express API]
   BE --> DB[(PostgreSQL บน Neon)]
   BE --> AI[Gemini API]
 ```
 
-FE ส่งข้อความผู้ใช้ไปที่ `POST /api/chat` ของ BE
+หน้าเว็บส่งข้อความไปที่ `/api/chat` ของ FE เอง แล้ว Nginx ใน container ของ FE ส่งต่อไปที่ BE ตามค่า `BE_URL` จึงไม่ติด CORS
 BE แนบข้อมูล Portfolio เป็น system instruction แล้วส่งคำถามให้ Gemini จากนั้นบันทึกคำถามและคำตอบลงตาราง `chat_history` แล้วส่งคำตอบกลับ
 
 ## โครงสร้างโปรเจกต์
@@ -64,11 +64,15 @@ BE แนบข้อมูล Portfolio เป็น system instruction แล�
 │  ├─ .dockerignore     # กัน .env และ node_modules ไม่ให้เข้า image
 │  ├─ .env.example
 │  └─ package.json
-├─ FE/                  # React app
+├─ FE/                  # React app (Vite)
+│  ├─ src/              # App.jsx = หน้า Portfolio และ Chat UI
+│  ├─ index.html
+│  ├─ vite.config.js
+│  ├─ package.json
 │  ├─ Dockerfile        # build ด้วย Node แล้วเสิร์ฟด้วย nginx
-│  ├─ nginx/
-│  │  └─ default.conf.template  # ส่ง /api ต่อไปที่ BE ตามค่า BE_URL
-│  └─ src/
+│  ├─ .dockerignore
+│  └─ nginx/
+│     └─ default.conf.template  # ส่ง /api ต่อไปที่ BE ตามค่า BE_URL
 ├─ .github/workflows/
 │  └─ ci-cd.yml         # pipeline CI/CD
 └─ README.md
@@ -87,8 +91,8 @@ BE แนบข้อมูล Portfolio เป็น system instruction แล�
 ### Backend
 
 ```bash
-git clone <repo-url>
-cd <repo-folder>/BE
+git clone https://github.com/Sprites-X/chat-ai-portfolio.git
+cd chat-ai-portfolio/BE
 
 # สร้างไฟล์ env จากตัวอย่าง แล้วใส่ค่าจริง
 cp .env.example .env
@@ -109,15 +113,15 @@ curl -X POST http://localhost:5000/api/chat \
 
 ### Frontend
 
-<!-- TODO (FE): ตรวจคำสั่งให้ตรงกับโปรเจกต์ FE จริง -->
-
 ```bash
-cd <repo-folder>/FE
+cd chat-ai-portfolio/FE
 npm ci
 npm run dev
 ```
 
-หน้าเว็บเรียก BE ด้วย path สั้น `/api/chat` เสมอ ตอนรันในเครื่องให้ dev server ส่งต่อไปที่ BE (ตั้งใน `vite.config.js`):
+เปิดเว็บที่ `http://localhost:5173`
+
+หน้าเว็บเรียก BE ด้วย path สั้น `/api/chat` เสมอ ถ้าจะลองแชตตอนรันในเครื่อง ให้เพิ่มค่านี้ใน `vite.config.js` เพื่อให้ dev server ส่งต่อไปที่ BE:
 
 ```js
 server: {
@@ -181,14 +185,13 @@ Response `200`:
 ## AI ตอบจากข้อมูลอะไร
 
 ข้อมูล Portfolio ของกลุ่มและสมาชิกทุกคนเก็บไว้ในค่าคงที่ `PORTFOLIO_CONTEXT` ใน `BE/index.js`
-ทุกครั้งที่มีคำถาม BE จะส่งข้อมูลนี้ให้ Gemini (โมเดล `gemini-3.8-flash`) เป็น `systemInstruction` และกำหนดให้ตอบโดยอ้างอิงข้อมูลนี้เท่านั้น
-
-<!-- TODO (BE): อัปเดตเมื่อเปลี่ยนวิธีเก็บข้อมูล Portfolio -->
+ทุกครั้งที่มีคำถาม BE จะส่งข้อมูลนี้ให้ Gemini (โมเดลตามค่า `GEMINI_MODEL` ค่าเริ่มต้น `gemini-3.8-flash`) เป็น `systemInstruction` และกำหนดให้ตอบโดยอ้างอิงข้อมูลนี้เท่านั้น
 
 ตัวอย่างคำถามที่ถามได้:
 - กลุ่มนี้มีจุดเด่นอะไร
 - ใครในกลุ่มถนัด Backend
-- เล่าผลงานของ <ชื่อสมาชิก> ให้ฟังหน่อย
+- เล่าผลงานของวรรณพรให้ฟังหน่อย
+- ติดต่อทีมได้ทางไหน
 
 ---
 
@@ -211,7 +214,15 @@ test เปิด server ด้วย `node index.js` แล้วยิง requ
 | `POST /api/chat` ส่ง field ผิดชื่อ | `400` |
 | `GET /api/chat` | `404` |
 
-pipeline จะรัน test ให้อัตโนมัติทุกครั้งที่ push
+ฝั่ง FE ตรวจด้วยการ build ถ้า build ผ่าน แปลว่า React compile ได้ไม่มี error
+
+```bash
+cd FE
+npm ci
+npm run build
+```
+
+pipeline จะรันทั้งสองฝั่งให้อัตโนมัติทุกครั้งที่ push
 
 ---
 
@@ -255,13 +266,33 @@ test ยังรันทุกครั้ง ถ้าต้องการ d
 
 ค่า `DATABASE_URL` และ `GEMINI_API_KEY` ไม่ได้อยู่ใน pipeline แต่ตั้งไว้ที่หน้า Environment ของ service บน Render
 
+**การป้องกัน branch `main`** (Settings → Rules → Rulesets → `protect-main`)
+
+- ต้องแก้ผ่าน Pull Request เท่านั้น push ตรงเข้า `main` จะถูกปฏิเสธ
+- ต้องผ่าน status check `test-be` ก่อนถึงจะกด Merge ได้
+- ห้าม force push และห้ามลบ `main`
+
+**ขั้นตอนส่งงานเข้า `main`**
+
+```bash
+git checkout main
+git pull
+git checkout -b <ชื่อ-branch>
+# แก้โค้ด
+git add .
+git commit -m "อธิบายสิ่งที่แก้"
+git push -u origin <ชื่อ-branch>
+```
+
+แล้วเปิด Pull Request เข้า `main` บน GitHub ตรวจแท็บ **Files changed** ว่าแก้ถูกไฟล์ รอ check เขียวแล้วกด Merge
+
 ## Deployment
 
 1. push เข้า `main` ครั้งแรกเพื่อให้ pipeline build image ขึ้น Docker Hub
 2. เตรียม connection string ของฐานข้อมูลบน **Neon**
-3. สร้าง **Web Service** บน Render จาก image `docker.io/<user>/portfolio-be:latest` (Singapore) แล้วตั้ง `DATABASE_URL`, `GEMINI_API_KEY`
-4. ทดสอบด้วย `curl -X POST https://<ชื่อ-be>.onrender.com/api/chat -H "Content-Type: application/json" -d '{"message":"สวัสดี"}'` ต้องได้ `reply` กลับมา
-5. สร้าง **Web Service** จาก image `docker.io/<user>/portfolio-fe:latest` (Singapore) แล้วตั้ง `BE_URL` = `https://chat-ai-portfolio-be.onrender.com` (ไม่มี `/` ท้าย)
+3. สร้าง **Web Service** บน Render จาก image `docker.io/spritessx/portfolio-be:latest` (Singapore) แล้วตั้ง `DATABASE_URL`, `GEMINI_API_KEY`
+4. ทดสอบด้วย `curl -X POST https://chat-ai-portfolio-be.onrender.com/api/chat -H "Content-Type: application/json" -d '{"message":"สวัสดี"}'` ต้องได้ `reply` กลับมา
+5. สร้าง **Web Service** จาก image `docker.io/spritessx/portfolio-fe:latest` (Singapore) แล้วตั้ง `BE_URL` = `https://chat-ai-portfolio-be.onrender.com` (ไม่มี `/` ท้าย)
 6. คัดลอก Deploy Hook ของทั้งสอง service (Settings → Deploy Hook) ไปใส่ใน GitHub Secrets
 7. จากนั้นทุกครั้งที่ push เข้า `main` เว็บจะอัปเดตเอง
 
@@ -275,6 +306,7 @@ test ยังรันทุกครั้ง ถ้าต้องการ d
 | FE ไม่ขึ้นเลย log ขึ้น `invalid URL prefix` | `BE_URL` ไม่มี `https://` นำหน้า | ใส่ `https://` นำหน้า |
 | แชตได้ 404 แต่เปิดหน้าเว็บได้ | `BE_URL` มี `/` ท้าย ทำให้ path `/api` หายไประหว่างส่งต่อ | ลบ `/` ท้าย `BE_URL` |
 | เปิดเว็บครั้งแรกแชตไม่ได้ | BE แบบ Free กำลังหลับ | เปิดลิงก์ BE รอประมาณ 1 นาที (ขึ้น `Cannot GET /` ถือว่าตื่นแล้ว) แล้วรีเฟรชหน้าเว็บ |
+| push เข้า `main` แล้วขึ้น `GH013: Repository rule violations` | `main` ป้องกันด้วย Ruleset ต้องผ่าน Pull Request | แตก branch แล้วเปิด PR ตามขั้นตอนในหัวข้อ CI/CD |
 | `test-be` ไม่ผ่าน | แก้ response ของ BE แต่ไม่ได้แก้ test | ดู expected/actual ใน log แล้วแก้ test ให้ตรง |
 | `docker login: unauthorized` หรือ image ชื่อ `/portfolio-be` | ไม่ได้ตั้ง `DOCKERHUB_USERNAME` ในแท็บ Variables, ชื่อ secret ผิด หรือ token หมดอายุ | ตรวจชื่อและแท็บที่ใส่ แล้วสร้าง token ใหม่ |
 | deploy ได้ 401/404 หรือ `no URL specified` | Hook URL ผิด ถูก Regenerate หรือยังไม่ได้ตั้ง secret | คัดลอก URL ใหม่ไปใส่ใน Secrets |
