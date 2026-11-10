@@ -1,122 +1,137 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import axios from 'axios';
+import { MessageSquare, User, Send, Code, Server, Layout } from 'lucide-react';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [activeTab, setActiveTab] = useState('portfolio');
+  const [messages, setMessages] = useState([
+    { role: 'assistant', text: 'สวัสดีครับ! มีอะไรให้ผมช่วยไหมครับ?' }
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // ข้อมูลสมาชิกกลุ่ม (ปรับเปลี่ยนชื่อได้เลย)
+  const teamMembers = [
+    { name: 'Member 1', role: 'Frontend Developer', icon: Layout, desc: 'ดูแลส่วน UI/UX และการเชื่อมต่อ API' },
+    { name: 'Member 2', role: 'Backend Developer', icon: Server, desc: 'ดูแล Database และ API Gateway' },
+    { name: 'Member 3', role: 'DevOps / Fullstack', icon: Code, desc: 'ดูแล CI/CD และ Deployment' }
+  ];
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userMessage = input;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setLoading(true);
+
+    try {
+      // ยิง API ไปที่ /api/chat ของ Backend
+      const response = await axios.post('/api/chat', { message: userMessage });
+      const reply = response.data.reply || response.data.message || 'ได้รับคำตอบจากเซิร์ฟเวอร์แล้ว';
+      setMessages(prev => [...prev, { role: 'assistant', text: reply }]);
+    } catch (error) {
+      console.error('API Error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        text: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ (กำลังรอเชื่อม Backend)' 
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <div style={{ fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+      {/* Navigation Tabs */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
+        <button 
+          onClick={() => setActiveTab('portfolio')}
+          style={{ 
+            padding: '10px 20px', 
+            cursor: 'pointer', 
+            borderRadius: '6px', 
+            border: 'none',
+            background: activeTab === 'portfolio' ? '#0070f3' : '#f0f0f0',
+            color: activeTab === 'portfolio' ? '#fff' : '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
         >
-          Count is {count}
+          <User size={18} /> Portfolio
         </button>
-      </section>
+        <button 
+          onClick={() => setActiveTab('chat')}
+          style={{ 
+            padding: '10px 20px', 
+            cursor: 'pointer', 
+            borderRadius: '6px', 
+            border: 'none',
+            background: activeTab === 'chat' ? '#0070f3' : '#f0f0f0',
+            color: activeTab === 'chat' ? '#fff' : '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <MessageSquare size={18} /> Chat AI
+        </button>
+      </div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {/* Content Area */}
+      {activeTab === 'portfolio' ? (
+        <div>
+          <h2>🚀 Group Project Portfolio</h2>
+          <p>ยินดีต้อนรับสู่เว็บ Portfolio กลุ่ม สมาชิกผู้พัฒนาได้แก่:</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginTop: '20px' }}>
+            {teamMembers.map((member, idx) => {
+              const IconComp = member.icon;
+              return (
+                <div key={idx} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
+                  <IconComp size={40} color="#0070f3" style={{ marginBottom: '10px' }} />
+                  <h3 style={{ margin: '5px 0' }}>{member.name}</h3>
+                  <p style={{ fontWeight: 'bold', color: '#666', fontSize: '14px' }}>{member.role}</p>
+                  <p style={{ fontSize: '12px', color: '#888' }}>{member.desc}</p>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+      ) : (
+        <div>
+          <h2>💬 Chat AI Assistant</h2>
+          <div style={{ height: '350px', border: '1px solid #ddd', borderRadius: '8px', padding: '15px', overflowY: 'auto', marginBottom: '15px', background: '#fafafa' }}>
+            {messages.map((msg, index) => (
+              <div key={index} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: '10px' }}>
+                <div style={{ 
+                  maxWidth: '70%', 
+                  padding: '10px 14px', 
+                  borderRadius: '12px',
+                  background: msg.role === 'user' ? '#0070f3' : '#e9e9eb',
+                  color: msg.role === 'user' ? '#fff' : '#000'
+                }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {loading && <div style={{ color: '#888', fontStyle: 'italic' }}>AI กำลังคิดคำตอบ...</div>}
+          </div>
+          <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="พิมพ์ข้อความที่นี่..."
+              style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+            <button type="submit" disabled={loading} style={{ padding: '10px 20px', background: '#0070f3', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+              <Send size={18} />
+            </button>
+          </form>
         </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      )}
+    </div>
+  );
 }
-
-export default App
