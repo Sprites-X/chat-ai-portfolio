@@ -22,3 +22,4 @@ test('POST /api/chat โดยไม่ส่ง message ควรคืนค�
     server.close();
   }
 });
+process.exit(0);
