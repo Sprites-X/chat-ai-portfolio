@@ -3,10 +3,10 @@
 เว็บแอป Portfolio ของกลุ่ม ที่ผู้เยี่ยมชมพูดคุยกับ AI เพื่อถามเรื่องราว ผลงาน และทักษะของกลุ่มและสมาชิกแต่ละคนได้
 
 **Live demo**
-- เว็บไซต์: https://<ชื่อ-fe>.onrender.com
+- เว็บไซต์: https://chat-ai-portfolio-fe.onrender.com
 - Backend API: https://chat-ai-portfolio-be.onrender.com
 
-> ใช้ Render แบบ Free: หากไม่มีผู้ใช้งาน 15 นาที service จะหลับ การเปิดครั้งแรกต้องรอประมาณ 1 นาที
+> ใช้ Render แบบ Free: หากไม่มีผู้ใช้งาน 15 นาที service จะหลับ การเปิดครั้งแรกต้องรอประมาณ 1 นาที ระหว่างนั้นหน้าแชตจะส่งข้อความซ้ำให้เองจนกว่า BE จะตื่น
 
 ---
 
@@ -23,7 +23,8 @@
 ## Features
 
 - **หน้า Portfolio** แนะนำกลุ่ม สมาชิกรายบุคคล ผลงาน และช่องทางติดต่อ
-- **Chat UI** หน้าแชตที่แยกข้อความของผู้ใช้และ AI ชัดเจน
+- **Chat UI** หน้าแชตที่แยกข้อความของผู้ใช้และ AI ชัดเจน แสดงคำตอบแบบ Markdown มีปุ่มคำถามตัวอย่างและปุ่มล้างแชต
+- **รองรับตอน BE หลับ** ถ้า BE ยังไม่ตื่น หน้าแชตจะส่งข้อความซ้ำทุก 10 วินาที นานสุดราว 1 นาที
 - **AI ที่ตอบจากข้อมูล Portfolio** ตอบได้ทั้งคำถามเกี่ยวกับกลุ่มโดยรวมและเกี่ยวกับสมาชิกแต่ละคน
 - **ประวัติการสนทนา** เก็บในตาราง `chat_history` บน PostgreSQL
 - **CI/CD อัตโนมัติ** push เข้า `main` แล้วระบบ test, build, scan และ deploy ให้เอง
@@ -32,7 +33,7 @@
 
 | ส่วน | เทคโนโลยี |
 |---|---|
-| Frontend | React 19 + Vite, axios, lucide-react เสิร์ฟด้วย Nginx |
+| Frontend | React 19 + Vite, axios, react-markdown, lucide-react เสิร์ฟด้วย Nginx |
 | Backend | Node.js 24, Express 5 (JavaScript) |
 | Database | PostgreSQL บน Neon |
 | AI | Google Gemini API (`@google/genai`) |
@@ -188,7 +189,8 @@ Response `200`:
 ทุกครั้งที่มีคำถาม BE จะส่งข้อมูลนี้ให้ Gemini (โมเดลตามค่า `GEMINI_MODEL` ค่าเริ่มต้น `gemini-3.8-flash`) เป็น `systemInstruction` และกำหนดให้ตอบโดยอ้างอิงข้อมูลนี้เท่านั้น
 
 ตัวอย่างคำถามที่ถามได้:
-- กลุ่มนี้มีจุดเด่นอะไร
+- จุดเด่นของโปรเจกต์นี้คืออะไร
+- ใครดูแลส่วน DevOps และ CI/CD Pipeline
 - ใครในกลุ่มถนัด Backend
 - เล่าผลงานของวรรณพรให้ฟังหน่อย
 - ติดต่อทีมได้ทางไหน
@@ -305,7 +307,7 @@ git push -u origin <ชื่อ-branch>
 | FE ไม่ขึ้นเลย log ขึ้น `unknown "be_url" variable` | ไม่ได้ตั้ง `BE_URL` ที่ service FE | ใส่ `BE_URL` ในหน้า Environment |
 | FE ไม่ขึ้นเลย log ขึ้น `invalid URL prefix` | `BE_URL` ไม่มี `https://` นำหน้า | ใส่ `https://` นำหน้า |
 | แชตได้ 404 แต่เปิดหน้าเว็บได้ | `BE_URL` มี `/` ท้าย ทำให้ path `/api` หายไประหว่างส่งต่อ | ลบ `/` ท้าย `BE_URL` |
-| เปิดเว็บครั้งแรกแชตไม่ได้ | BE แบบ Free กำลังหลับ | เปิดลิงก์ BE รอประมาณ 1 นาที (ขึ้น `Cannot GET /` ถือว่าตื่นแล้ว) แล้วรีเฟรชหน้าเว็บ |
+| ข้อความแรกรอนาน หรือขึ้นว่า BE ไม่ตอบภายใน 1 นาที | BE แบบ Free กำลังหลับ (หน้าแชตลองส่งซ้ำให้แล้วราว 1 นาที) | เปิดลิงก์ BE รอจนขึ้น `Cannot GET /` ซึ่งแปลว่าตื่นแล้ว จากนั้นส่งข้อความใหม่ |
 | push เข้า `main` แล้วขึ้น `GH013: Repository rule violations` | `main` ป้องกันด้วย Ruleset ต้องผ่าน Pull Request | แตก branch แล้วเปิด PR ตามขั้นตอนในหัวข้อ CI/CD |
 | `test-be` ไม่ผ่าน | แก้ response ของ BE แต่ไม่ได้แก้ test | ดู expected/actual ใน log แล้วแก้ test ให้ตรง |
 | `docker login: unauthorized` หรือ image ชื่อ `/portfolio-be` | ไม่ได้ตั้ง `DOCKERHUB_USERNAME` ในแท็บ Variables, ชื่อ secret ผิด หรือ token หมดอายุ | ตรวจชื่อและแท็บที่ใส่ แล้วสร้าง token ใหม่ |
