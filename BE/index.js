@@ -2,12 +2,34 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
+const { Pool } = require('pg');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+const initDb = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_history (
+        id SERIAL PRIMARY KEY,
+        user_message TEXT NOT NULL,
+        ai_response TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✅ Database connected & initialized!');
+  } catch (err) {
+    console.error('❌ Error initializing database:', err);
+  }
+};
+
 
 const PORTFOLIO_CONTEXT = `
 ชื่อกลุ่ม ByteMind
@@ -75,11 +97,17 @@ app.post('/api/chat', async (req, res) => {
   } else {
     aiReply = `[ระบบตอบรับอัตโนมัติ] คุณถามว่า: "${message}" (ข้อมูลกลุ่ม: ByteMind)`;
   }
+  try {
+    await pool.query('INSERT INTO chat_history (user_message, ai_response) VALUES ($1, $2)', [message, aiReply]);
+  } catch (err) {
+    console.error('❌ Error saving chat history:', err);
+  }
 
   res.json({ reply: aiReply });
 });
 
-if (process.env.NODE_ENV !== 'test') {
+if (require.main === module) {
+  initDb();
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
