@@ -40,15 +40,15 @@ const PORTFOLIO_CONTEXT = `
  GitHub: Sprites-X/chat-ai-portfolio
 
 2. ข้อมูลสมาชิกรายคน
-1. Wannaporn (สาย Frontend)
+1.วรรณพร แก้วหาวงศ์(Wannaporn)(สาย Frontend)
  ทักษะ: React, JavaScript, HTML/CSS, UI/UX, Component Design
  ผลงาน / หน้าที่: ตัวแม่เรื่องความสวยงาม ลุยทำหน้าเว็บ UI ทั้งหมด ทำปุ่ม ออกแบบการจัดวางคอมโพเนนต์ แล้วก็ทำหน้าแชทโต้ตอบให้เล่นง่ายสบายตา
 
-2. Phongsakon (สาย DevOps)
+2.พงศกร ศรีทอง(Phongsakon)(สาย DevOps)
  ทักษะ: Docker, Nginx, GitHub Actions (CI/CD), Trivy, Render, Unit Test (node:test), Git/GitHub
  ผลงาน / หน้าที่: สร้าง repo กลุ่มและวางโครง BE/FE ทำ Dockerfile ของ BE กับ FE และ Nginx Proxy ที่ส่ง /api ต่อไปหา BE เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ โดย build เฉพาะฝั่งที่โค้ดเปลี่ยน เขียน test ของ API ตั้งกฎป้องกัน main ให้ต้องผ่าน PR และ test ก่อน merge และดูแลค่าลับไม่ให้หลุดเข้า repo
 
-3. Natnicha (สาย Backend)
+3.ณัฐนิชา ภูสิงห์(Natnicha)(สาย Backend)
 ทักษะ: Node.js, Express, Gemini API Integration, Automated Testing (node:test), RESTful API Design, Git/GitHub
 ผลงาน / หน้าที่: พัฒนาและดูแลระบบ Backend API /api/chat ทั้งหมด เชื่อมต่อ Gemini API SDK เขียนระบบสลับโมเดลอัตโนมัติ (Fallback Logic) เมื่อเจอ Error 429/500/503 จัดการระบบตอบรับสำรอง และเขียน Unit Test ให้ผ่านอัตโนมัติก่อนส่งโค้ดขึ้นระบบจริง
 `;
