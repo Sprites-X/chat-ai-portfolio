@@ -9,9 +9,11 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+// Neon บังคับใช้ SSL: ต่อแบบเข้ารหัสและตรวจใบรับรองของ server เสมอ
+// (ถ้า DATABASE_URL มี ?sslmode=... pg จะใช้ค่าจาก URL แทนค่านี้)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: true,
 });
 
 const initDb = async () => {
@@ -74,10 +76,18 @@ async function askGemini(ai, message) {
   throw busy;
 }
 
+// จำกัดความยาวคำถาม กันข้อความยาวผิดปกติไปถึง Gemini และฐานข้อมูล
+const MAX_MESSAGE_LENGTH = 1000;
+
 app.post('/api/chat', async (req, res) => {
-  const { message } = req.body;
+  // req.body เป็น undefined ได้ถ้าไม่ได้ส่งมาเป็น JSON และ message ต้องเป็นข้อความเท่านั้น
+  const raw = req.body?.message;
+  const message = typeof raw === 'string' ? raw.trim() : '';
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
+  }
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    return res.status(400).json({ error: `ข้อความยาวเกินไป (สูงสุด ${MAX_MESSAGE_LENGTH} ตัวอักษร)` });
   }
 
   let aiReply = '';
@@ -114,4 +124,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-

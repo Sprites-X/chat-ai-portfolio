@@ -1,6 +1,6 @@
 // test ของ BE รันด้วย `node --test` (pipeline รันให้ทุกครั้งที่ push)
 // เปิด server จริงด้วย `node index.js` แล้วยิง request เข้าไป จึงไม่ต้องแก้ index.js
-// ไม่ต้องใช้ฐานข้อมูลหรือ Gemini key เพราะตรวจเฉพาะ response ที่ไม่ไปถึง DB/AI
+// ไม่ต้องใช้ฐานข้อมูลหรือ Gemini key: ไม่มี key บอทจะตอบข้อความสำรอง และถ้าบันทึก DB ไม่ได้ก็ยังตอบปกติ
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
@@ -71,6 +71,41 @@ describe('POST /api/chat', () => {
   it('ส่งชื่อ field ผิด (text แทน message) ได้ 400', async () => {
     const res = await post({ text: 'สวัสดี' });
     assert.equal(res.status, 400);
+  });
+
+  it('message มีแต่ช่องว่างได้ 400', async () => {
+    const res = await post({ message: '   ' });
+    assert.equal(res.status, 400);
+  });
+
+  it('message ไม่ใช่ข้อความ (ตัวเลข) ได้ 400', async () => {
+    const res = await post({ message: 123 });
+    assert.equal(res.status, 400);
+  });
+
+  it('message ยาวเกิน 1000 ตัวอักษรได้ 400', async () => {
+    const res = await post({ message: 'ก'.repeat(1001) });
+    assert.equal(res.status, 400);
+    const data = await res.json();
+    assert.match(data.error, /1000/);
+  });
+
+  it('ไม่ได้ส่งเป็น JSON ได้ 400 (ไม่ใช่ 500)', async () => {
+    const res = await fetch(`${base}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: 'สวัสดี',
+    });
+    assert.equal(res.status, 400);
+  });
+
+  it('ข้อความปกติได้ 200 พร้อม reply', async () => {
+    const res = await post({ message: 'สวัสดี' });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(typeof data.reply, 'string');
+    // test ไม่มี GEMINI_API_KEY บอทจึงตอบข้อความสำรองที่มีคำถามอยู่ข้างใน
+    assert.match(data.reply, /สวัสดี/);
   });
 });
 

@@ -275,6 +275,7 @@ export default function App() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="พิมพ์ข้อความคำถามเกี่ยวกับ ByteMind..."
+              maxLength={1000}
               disabled={loading}
               style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
             />
