@@ -22,8 +22,10 @@
 
 ## Features
 
-- **หน้า Portfolio** แนะนำกลุ่ม สมาชิกรายบุคคล ผลงาน และช่องทางติดต่อ
-- **Chat UI** หน้าแชตที่แยกข้อความของผู้ใช้และ AI ชัดเจน แสดงคำตอบแบบ Markdown มีปุ่มคำถามตัวอย่างและปุ่มล้างแชต
+- **ห้องของทีม (`/`)** ภาพห้องทำงานเรนเดอร์ด้วย Blender ทั้งกลางวันและกลางคืน (สลับได้ เริ่มตามเวลาเครื่อง) กดของได้ทุกชิ้น กดคอมเพื่อเข้า ByteMind OS กดโมเดลแก้วเพื่อดูเครือข่ายทีม หนังสือ 3 เล่มบนชั้นคือสมาชิกแต่ละคน
+- **ByteMind OS (`/os`)** หน้า Portfolio แบบเดสก์ท็อปจำลอง มี 10 แอป: about, team, pipeline, **chat**, contact, terminal, files, database, system, settings หน้าต่างลากย้ายได้ บนมือถือเปิดทีละแอป
+- **Chat UI** แอป chat ใน OS คุยกับ AI ผ่าน `/api/chat` จริง แสดงคำตอบแบบ Markdown มีปุ่มคำถามตัวอย่างและปุ่มล้างแชต ส่วน terminal ใช้ `ask` หรือ `curl` ยิง API จริงได้เหมือนกัน
+- **เครือข่ายทีม (`/neural`)** แผนภาพสมาชิก ทักษะ และผลงานบน canvas ลากจุดเล่นได้ มีแบบข้อความสำหรับอ่านง่าย
 - **รองรับตอน BE หลับ** ถ้า BE ยังไม่ตื่น หน้าแชตจะส่งข้อความซ้ำทุก 10 วินาที นานสุดราว 1 นาที
 - **AI ที่ตอบจากข้อมูล Portfolio** ตอบได้ทั้งคำถามเกี่ยวกับกลุ่มโดยรวมและเกี่ยวกับสมาชิกแต่ละคน
 - **ประวัติการสนทนา** เก็บในตาราง `chat_history` บน PostgreSQL
@@ -33,7 +35,7 @@
 
 | ส่วน | เทคโนโลยี |
 |---|---|
-| Frontend | React 19 + Vite, axios, react-markdown, lucide-react เสิร์ฟด้วย Nginx |
+| Frontend | React 19 + Vite, axios, react-markdown เสิร์ฟด้วย Nginx (ภาพห้องเรนเดอร์ด้วย Blender) |
 | Backend | Node.js 24, Express 5 (JavaScript) |
 | Database | PostgreSQL บน Neon |
 | AI | Google Gemini API (`@google/genai`) |
@@ -67,7 +69,15 @@ BE แนบข้อมูล Portfolio เป็น system instruction แล�
 │  ├─ .env.example
 │  └─ package.json
 ├─ FE/                  # React app (Vite)
-│  ├─ src/              # App.jsx = หน้า Portfolio และ Chat UI
+│  ├─ src/
+│  │  ├─ App.jsx        # เลือกหน้าตาม path: / ห้อง · /os · /neural
+│  │  ├─ router.js      # router เล็ก ๆ ด้วย History API (ไม่ต้องลง library)
+│  │  ├─ api.js         # POST /api/chat + ส่งซ้ำตอน BE หลับ
+│  │  ├─ data/team.js   # ข้อมูลสมาชิกที่ทุกหน้าใช้ร่วมกัน
+│  │  ├─ room/          # หน้าห้อง: Room.jsx, scene.js, roomData.json (ตำแหน่งของทุกชิ้นในภาพ)
+│  │  ├─ os/            # ByteMind OS: Os.jsx, Window.jsx, useChat.js, github.js, apps/*.jsx
+│  │  └─ neural/        # เครือข่ายทีม: Neural.jsx, network.js (วาดบน canvas)
+│  ├─ public/room/      # ภาพห้องกลางวัน/กลางคืน แนวนอน (จอคอม) และแนวตั้ง (มือถือ)
 │  ├─ index.html
 │  ├─ vite.config.js
 │  ├─ package.json
@@ -121,7 +131,7 @@ npm ci
 npm run dev
 ```
 
-เปิดเว็บที่ `http://localhost:5173`
+เปิดเว็บที่ `http://localhost:5173` (หน้า `/os` และ `/neural` เปิดตรง ๆ หรือรีเฟรชได้ เพราะทั้ง Vite และ nginx ตอบ `index.html` ให้ทุก path)
 
 หน้าเว็บเรียก BE ด้วย path สั้น `/api/chat` เสมอ ถ้าจะลองแชตตอนรันในเครื่อง ให้เพิ่มค่านี้ใน `vite.config.js` เพื่อให้ dev server ส่งต่อไปที่ BE:
 
@@ -134,6 +144,8 @@ server: {
 ```
 
 บน Render หน้าที่นี้เป็นของ nginx ใน image ของ FE ซึ่งส่ง `/api/*` ต่อไปที่ `BE_URL`
+
+แอป files และคำสั่ง `git log` / `npm test` ใน terminal อ่านไฟล์และ commit จาก repo บน GitHub ตอนเปิดดู (GitHub API ให้เรียกได้ราว 60 ครั้ง/ชั่วโมงต่อ IP ถ้าเกินจะใช้รายชื่อไฟล์สำรองใน `FE/src/os/github.js`)
 
 > ห้าม commit ไฟล์ `BE/.env` ขึ้น repo ไฟล์นี้อยู่ใน `.gitignore` และ `.dockerignore` แล้ว
 
