@@ -60,7 +60,8 @@ BE แนบข้อมูล Portfolio เป็น system instruction แล�
 .
 ├─ BE/                  # Express API + การเชื่อมต่อ AI
 │  ├─ index.js          # server, API, การเชื่อม DB และ Gemini
-│  ├─ api.test.js       # test (ไม่ต้องใช้ DB หรือ key)
+│  ├─ server.test.js    # test เปิด server จริงแล้วยิง request (ไม่ต้องใช้ DB หรือ key)
+│  ├─ api.test.js       # test เรียก app โดยตรง
 │  ├─ Dockerfile
 │  ├─ .dockerignore     # กัน .env และ node_modules ไม่ให้เข้า image
 │  ├─ .env.example
@@ -147,9 +148,9 @@ server: {
 | `DATABASE_URL` | connection string ของ PostgreSQL | `postgresql://user:password@host/dbname?sslmode=require` |
 | `GEMINI_API_KEY` | Gemini API key | `your_gemini_api_key` |
 | `PORT` | พอร์ตของ server (Render ตั้งให้เอง) | `5000` |
-| `GEMINI_MODEL` | ชื่อโมเดล Gemini (ไม่ใส่ก็ได้) | `gemini-3.8-flash` |
+| `GEMINI_MODEL` | โมเดล Gemini ตัวแรกที่ลองใช้ (ไม่ใส่ก็ได้) ถ้าไม่ว่างจะสลับไปโมเดลสำรองเอง | `gemini-3.8-flash` |
 
-> หากไม่ได้ตั้ง `GEMINI_API_KEY` บอทจะตอบเป็นข้อความ `[ระบบตอบรับอัตโนมัติ]` แทนคำตอบจาก AI
+> หากไม่ได้ตั้ง `GEMINI_API_KEY` หรือ Gemini ตอบ error ที่ไม่ใช่เรื่องไม่ว่าง (เช่น key ผิด) บอทจะตอบเป็นข้อความ `[ระบบตอบรับอัตโนมัติ]` แทนคำตอบจาก AI
 
 **Frontend** (หน้า Environment ของ service FE บน Render)
 
@@ -180,13 +181,21 @@ Response `200`:
 
 | สถานะ | เมื่อไร | Body |
 |---|---|---|
-| `400` | ไม่มี `message` หรือเป็นข้อความว่าง | `{ "error": "กรุณาระบุข้อความ" }` |
-| `500` | เรียก AI หรือบันทึกฐานข้อมูลไม่สำเร็จ | `{ "error": "เกิดข้อผิดพลาดฝั่ง Server" }` |
+| `400` | ไม่มี `message` หรือเป็นข้อความว่าง | `{ "error": "Message is required" }` |
+| `503` | Gemini ไม่ว่างทุกโมเดล (ตอบ 429/500/503) | `{ "error": "AI มีผู้ใช้งานเยอะ ลองใหม่อีกครั้งนะ" }` |
 
 ## AI ตอบจากข้อมูลอะไร
 
 ข้อมูล Portfolio ของกลุ่มและสมาชิกทุกคนเก็บไว้ในค่าคงที่ `PORTFOLIO_CONTEXT` ใน `BE/index.js`
-ทุกครั้งที่มีคำถาม BE จะส่งข้อมูลนี้ให้ Gemini (โมเดลตามค่า `GEMINI_MODEL` ค่าเริ่มต้น `gemini-3.8-flash`) เป็น `systemInstruction` และกำหนดให้ตอบโดยอ้างอิงข้อมูลนี้เท่านั้น
+ทุกครั้งที่มีคำถาม BE จะส่งข้อมูลนี้ให้ Gemini เป็น `systemInstruction` และกำหนดให้ตอบโดยอ้างอิงข้อมูลนี้เท่านั้น
+
+**สลับโมเดลอัตโนมัติ** (`askGemini` ใน `BE/index.js`) BE ลองโมเดลตามลำดับนี้ ถ้าโมเดลไหนตอบ `429`, `500` หรือ `503` จะลองตัวถัดไปทันที
+
+1. ค่า `GEMINI_MODEL` (ค่าเริ่มต้น `gemini-3.8-flash`)
+2. `gemini-3.5-flash-lite`
+3. `gemini-3.8-flash`
+
+ถ้าไม่ว่างทุกโมเดล BE ตอบ `503` ส่วน error อื่น เช่น key ผิด จะไม่ลองซ้ำ
 
 ตัวอย่างคำถามที่ถามได้:
 - จุดเด่นของโปรเจกต์นี้คืออะไร
@@ -206,15 +215,19 @@ node --check index.js   # ตรวจ syntax
 node --test             # รัน test ทุกไฟล์ *.test.js
 ```
 
-test เปิด server ด้วย `node index.js` แล้วยิง request เข้าไปจริง ไม่ต้องใช้ฐานข้อมูลหรือ API key เพราะตรวจเฉพาะ response ที่ไม่ไปถึง DB หรือ AI
-(test ตั้ง `DATABASE_URL` และ `GEMINI_API_KEY` เป็นค่าว่าง จึงไม่แตะของจริงแม้ในเครื่องจะมี `.env`)
+test ทุกข้อไม่ต้องใช้ฐานข้อมูลหรือ API key เพราะตรวจเฉพาะ response ที่ไม่ไปถึง DB หรือ AI
+- `server.test.js` เปิด server ด้วย `node index.js` แล้วยิง request เข้าไปจริง โดยตั้ง `DATABASE_URL` และ `GEMINI_API_KEY` เป็นค่าว่าง จึงไม่แตะของจริงแม้ในเครื่องจะมี `.env`
+- `api.test.js` เรียก `app` ที่ `index.js` export ออกมา แล้วเปิดบนพอร์ตสุ่ม (server จริงเปิดเฉพาะตอนรัน `node index.js` โดยตรง)
 
-| Test | คาดหวัง |
-|---|---|
-| `POST /api/chat` ไม่มี `message` | `400` พร้อม `error` |
-| `POST /api/chat` `message` ว่าง | `400` |
-| `POST /api/chat` ส่ง field ผิดชื่อ | `400` |
-| `GET /api/chat` | `404` |
+| ไฟล์ | Test | คาดหวัง |
+|---|---|---|
+| `server.test.js` | `POST /api/chat` ไม่มี `message` | `400` พร้อม `error` |
+| `server.test.js` | `POST /api/chat` `message` ว่าง | `400` |
+| `server.test.js` | `POST /api/chat` ส่ง field ผิดชื่อ | `400` |
+| `server.test.js` | `GET /api/chat` | `404` |
+| `api.test.js` | `POST /api/chat` ไม่มี `message` | `400` และ `error` = `Message is required` |
+
+ผลที่ถูกต้องคือ `tests 5`, `pass 5`
 
 ฝั่ง FE ตรวจด้วยการ build ถ้า build ผ่าน แปลว่า React compile ได้ไม่มี error
 
@@ -302,12 +315,13 @@ git push -u origin <ชื่อ-branch>
 
 | อาการ | สาเหตุที่พบบ่อย | วิธีแก้ |
 |---|---|---|
-| บอทตอบ `[ระบบตอบรับอัตโนมัติ] ...` | ไม่ได้ตั้ง `GEMINI_API_KEY` บน Render | ใส่ key ที่หน้า Environment ของ BE |
-| แชตได้ `500` | ต่อฐานข้อมูลไม่ได้ หรือ Gemini ตอบ error | ดู Logs ของ BE บน Render แล้วตรวจ `DATABASE_URL` และ key |
+| บอทตอบ `[ระบบตอบรับอัตโนมัติ] ...` | ไม่ได้ตั้ง `GEMINI_API_KEY` บน Render หรือ key ผิด/ถูกลบ | ดู Logs ของ BE แล้วใส่ key ที่ถูกต้องในหน้า Environment |
+| แชตได้ `503` "AI มีผู้ใช้งานเยอะ" | Gemini ไม่ว่างทุกโมเดล | รอสักครู่แล้วส่งใหม่ หรือเปลี่ยน `GEMINI_MODEL` บน Render |
+| แชตตอบได้แต่ประวัติไม่ถูกบันทึก | ต่อฐานข้อมูลไม่ได้ | ดู Logs ของ BE หา `Error saving chat history` แล้วตรวจ `DATABASE_URL` |
 | FE ไม่ขึ้นเลย log ขึ้น `unknown "be_url" variable` | ไม่ได้ตั้ง `BE_URL` ที่ service FE | ใส่ `BE_URL` ในหน้า Environment |
 | FE ไม่ขึ้นเลย log ขึ้น `invalid URL prefix` | `BE_URL` ไม่มี `https://` นำหน้า | ใส่ `https://` นำหน้า |
 | แชตได้ 404 แต่เปิดหน้าเว็บได้ | `BE_URL` มี `/` ท้าย ทำให้ path `/api` หายไประหว่างส่งต่อ | ลบ `/` ท้าย `BE_URL` |
-| ข้อความแรกรอนาน หรือขึ้นว่า BE ไม่ตอบภายใน 1 นาที | BE แบบ Free กำลังหลับ (หน้าแชตลองส่งซ้ำให้แล้วราว 1 นาที) | เปิดลิงก์ BE รอจนขึ้น `Cannot GET /` ซึ่งแปลว่าตื่นแล้ว จากนั้นส่งข้อความใหม่ |
+| ข้อความแรกรอนาน หรือขึ้นว่า "ระบบหลังบ้านใช้เวลาปลุกนานกว่าปกติ" | BE แบบ Free กำลังหลับ (หน้าแชตลองส่งซ้ำให้แล้วราว 1 นาที) | เปิดลิงก์ BE รอจนขึ้น `Cannot GET /` ซึ่งแปลว่าตื่นแล้ว จากนั้นส่งข้อความใหม่ |
 | push เข้า `main` แล้วขึ้น `GH013: Repository rule violations` | `main` ป้องกันด้วย Ruleset ต้องผ่าน Pull Request | แตก branch แล้วเปิด PR ตามขั้นตอนในหัวข้อ CI/CD |
 | `test-be` ไม่ผ่าน | แก้ response ของ BE แต่ไม่ได้แก้ test | ดู expected/actual ใน log แล้วแก้ test ให้ตรง |
 | `docker login: unauthorized` หรือ image ชื่อ `/portfolio-be` | ไม่ได้ตั้ง `DOCKERHUB_USERNAME` ในแท็บ Variables, ชื่อ secret ผิด หรือ token หมดอายุ | ตรวจชื่อและแท็บที่ใส่ แล้วสร้าง token ใหม่ |
