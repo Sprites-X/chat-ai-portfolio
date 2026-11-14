@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
-import { Layout, Server, Code, Send, Trash2, ExternalLink } from 'lucide-react';
+import { Layout, Server, Code, Send, Trash2, ExternalLink, Mail } from 'lucide-react';
 
 const WELCOME = {
   role: 'assistant',
-  text: 'สวัสดีครับ/ค่ะ พวกเรา **ByteMind** ยินดีต้อนรับครับ 🚀\n\nยินดีตอบคำถามเกี่ยวกับโปรเจกต์ ผลงาน หรือข้อมูลสมาชิกในกลุ่ม ลองกดปุ่มคำถามตัวอย่างด้านล่างหรือพิมพ์ถามมาได้เลยครับ!'
+  text: 'สวัสดีครับ/ค่ะ พวกเรา **ByteMind** ยินดีต้อนรับครับ 🚀\n\nยินดีตอบคำถามเกี่ยวกับโปรเจกต์ ผลงาน หรือข้อมูลสมาชิกในกลุ่ม ลองกดปุ่มคำถามตัวอย่างด้านบนหรือพิมพ์ถามมาได้เลยครับ!'
 };
 
-// 4. ส่งซ้ำเองตอน BE หลับ (Retry Logic นอก App)
+// ส่งซ้ำเองตอน BE หลับ (Retry Logic นอก App)
 async function sendWithRetry(message) {
   for (let i = 0; i < 6; i++) {
     try {
@@ -19,7 +19,7 @@ async function sendWithRetry(message) {
     }
     await new Promise((r) => setTimeout(r, 10000));
   }
-  throw new Error('BE ไม่ตอบภายใน 1 นาที');
+  throw new Error('ระบบหลังบ้านใช้เวลาปลุกนานกว่าปกติ กรุณาลองส่งข้อความใหม่อีกครั้งนะครับ/ค่ะ');
 }
 
 export default function App() {
@@ -28,30 +28,30 @@ export default function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 2. เลื่อนลงล่างสุดอัตโนมัติเมื่อมีข้อความใหม่
+  // เลื่อนลงล่างสุดอัตโนมัติเมื่อมีข้อความใหม่ (รองรับมือถือด้วย block: 'nearest')
   const bottomRef = useRef(null);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages, loading]);
 
-  // 1. ข้อมูลสมาชิกรายคน (อัปเดตตามงานจริงของกลุ่ม)
+  // ข้อมูลสมาชิกรายคน (อัปเดตชื่อ-นามสกุลไทยครบ 3 คน)
   const teamMembers = [
     {
-      name: 'Wannaporn',
+      name: 'วรรณพร แก้วหาวงค์ (Wannaporn)',
       role: 'Frontend Developer',
       icon: Layout,
       skills: 'React, JavaScript, HTML/CSS, UI/UX, Component Design',
       desc: 'ตัวแม่เรื่องความสวยงาม ลุยทำหน้าเว็บ UI ทั้งหมด ทำปุ่ม ออกแบบการจัดวางคอมโพเนนต์ แล้วก็ทำหน้าแชทโต้ตอบให้เล่นง่ายสบายตา'
     },
     {
-      name: 'Phongsakon',
+      name: 'พงศกร ศรีทอง (Phongsakon)',
       role: 'DevOps Engineer',
       icon: Server,
       skills: 'Docker, Nginx, GitHub Actions (CI/CD), Trivy, Render, Unit Test (node:test), Git/GitHub',
-      desc: 'สร้าง repo กลุ่มและวางโครง BE/FE, ทำ Dockerfile ของ BE/FE + Nginx Proxy, เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ (build เฉพาะฝั่งที่เปลี่ยน), เขียน test API, ตั้งกฎป้องกัน main และดูแลค่าลับ'
+      desc: 'สร้าง repo กลุ่มและวางโครง BE/FE, ทำ Dockerfile ของ BE/FE + Nginx Proxy, เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ ตั้งกฎป้องกัน main และดูแลค่าลับ'
     },
     {
-      name: 'Natnicha',
+      name: 'ณัฐนิชา ภูสิงห์ (Natnicha)',
       role: 'Backend Developer',
       icon: Code,
       skills: 'Node.js, Express, Gemini API Integration, Automated Testing (node:test), RESTful API Design, Git/GitHub',
@@ -59,9 +59,9 @@ export default function App() {
     }
   ];
 
-  // 5. ปุ่มล้างแชต
+  // ปุ่มล้างแชท
   const clearChat = () => {
-    if (window.confirm('ล้างข้อความทั้งหมดในแชต?')) setMessages([WELCOME]);
+    if (window.confirm('ล้างข้อความทั้งหมดในแชท?')) setMessages([WELCOME]);
   };
 
   const handleSendMessage = async (e, customText = null) => {
@@ -80,7 +80,12 @@ export default function App() {
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', text: error.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์' }
+        {
+          role: 'assistant',
+          text:
+            error.response?.data?.error ||
+            'ขออภัยครับ/ค่ะ ระบบไม่สามารถตอบกลับได้ในขณะนี้ กรุณาลองใหม่อีกครั้งในภายหลัง'
+        }
       ]);
     } finally {
       setLoading(false);
@@ -94,12 +99,11 @@ export default function App() {
   ];
 
   return (
-    // 6. div นอกสุดใส่ width: '100%', boxSizing: 'border-box'
     <div style={{ width: '100%', boxSizing: 'border-box', maxWidth: '1000px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
       
       {/* Header & Tabs */}
       <header style={{ borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px' }}>
-        <h1 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>ByteMind · Chat AI Portfolio</h1>
+        <h1 style={{ margin: '0 0 10px 0', color: '#2c3e50', lineHeight: 1.2 }}>ByteMind · Chat AI Portfolio</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={() => setActiveTab('portfolio')}
@@ -136,16 +140,29 @@ export default function App() {
       {activeTab === 'portfolio' && (
         <main style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
           {/* ข้อมูลภาพรวมกลุ่ม */}
-          <section style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', borderLeft: '5px solid #3498db' }}>
+          <section style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', borderLeft: '5px solid #3498db', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <h2 style={{ marginTop: 0, color: '#2c3e50' }}>🚀 กลุ่ม ByteMind</h2>
-            <p><strong>แนวคิด & จุดเด่น:</strong> ทำเว็บ Portfolio ที่ไม่ได้มีแค่อ่านประวัติเฉยๆ แต่ใส่ระบบแชท AI เข้าไปด้วย กิมมิกคืออยากให้คนที่เข้ามาดูเว็บ สามารถพิมพ์ถาม-ตอบเรื่องโปรเจกต์หรือถามข้อมูลสมาชิกในกลุ่มได้ตรงๆ เลย แถมหลังบ้านเซ็ตระบบ CI/CD กับ Docker ไว้แน่นเปรี๊ยะ ดันโค้ดปุ๊บเทสปั๊บ ระบบไม่รวนแน่นอน</p>
+            <p><strong>แนวคิด & จุดเด่น:</strong> ทำเว็บ Portfolio ที่ไม่ได้มีแค่อ่านประวัติเฉยๆ แต่ใส่ระบบแชท AI เข้าไปด้วย กิมมิคคืออยากให้คนที่เข้ามาดูเว็บ สามารถพิมพ์ถาม-ตอบเรื่องโปรเจกต์หรือถามข้อมูลสมาชิกในกลุ่มได้ตรงๆ เลย แถมหลังบ้านเซ็ตระบบ CI/CD กับ Docker ไว้แน่นเปรี๊ยะ ดันโค้ดปุ๊บเทสปั๊บ ระบบไม่รวนแน่นอน</p>
             <p><strong>ผลงานที่ทำร่วมกัน:</strong> เว็บ <em>Chat AI Portfolio</em> ช่วยกันลุยตั้งแต่ขึ้นโครง UI, เขียน API ยิงหา AI, ทำเทส จนถึงเอาขึ้นระบบจริงบน Cloud</p>
-            <p style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-              <strong>ช่องทางติดต่อ:</strong> 
-              <a href="https://github.com/Sprites-X/chat-ai-portfolio" target="_blank" rel="noreferrer" style={{ color: '#3498db', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                GitHub: Sprites-X/chat-ai-portfolio <ExternalLink size={14} />
-              </a>
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <p style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, flexWrap: 'wrap' }}>
+                <strong>ช่องทางติดต่อ:</strong>
+                <a href="https://github.com/Sprites-X/chat-ai-portfolio" target="_blank" rel="noreferrer" style={{ color: '#3498db', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  GitHub: Sprites-X/chat-ai-portfolio <ExternalLink size={14} />
+                </a>
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.9rem', color: '#555' }}>
+                <a href="mailto:wannaporn.kaeo@bumail.net" style={{ color: '#3498db', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Mail size={14} /> wannaporn.kaeo@bumail.net
+                </a>
+                <a href="mailto:phongsakon.sith@bumail.net" style={{ color: '#3498db', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Mail size={14} /> phongsakon.sith@bumail.net
+                </a>
+                <a href="mailto:natnicha.phoo@bumail.net" style={{ color: '#3498db', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Mail size={14} /> natnicha.phoo@bumail.net
+                </a>
+              </div>
+            </div>
           </section>
 
           {/* สมาชิกในกลุ่ม */}
@@ -165,7 +182,7 @@ export default function App() {
                         <span style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>{m.role}</span>
                       </div>
                     </div>
-                    <p style={{ fontSize: '0.9rem', color: '#555' }}><strong>ทักษะ:</strong> {m.skills}</p>
+                    <p style={{ fontSize: '0.9rem', color: '#555', marginBottom: '8px' }}><strong>ทักษะ:</strong> {m.skills}</p>
                     <p style={{ fontSize: '0.9rem', color: '#555', margin: 0 }}><strong>หน้าที่ & ผลงาน:</strong> {m.desc}</p>
                   </div>
                 );
@@ -178,7 +195,7 @@ export default function App() {
       {/* TAB 2: CHAT AI */}
       {activeTab === 'chat' && (
         <main style={{ background: '#fff', border: '1px solid #ddd', borderRadius: '8px', padding: '20px' }}>
-          {/* Header กล่องแชต + ปุ่มล้างแชต */}
+          {/* Header กล่องแชท + ปุ่มล้างแชท */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <h2 style={{ margin: 0 }}>💬 Chat AI Assistant</h2>
             <button
@@ -198,7 +215,7 @@ export default function App() {
                 opacity: loading || messages.length <= 1 ? 0.5 : 1
               }}
             >
-              <Trash2 size={16} /> ล้างแชต
+              <Trash2 size={16} /> ล้างแชท
             </button>
           </div>
 
