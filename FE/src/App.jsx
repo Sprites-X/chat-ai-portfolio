@@ -37,7 +37,7 @@ export default function App() {
   // ข้อมูลสมาชิกรายคน (อัปเดตชื่อ-นามสกุลไทยครบ 3 คน)
   const teamMembers = [
     {
-      name: 'วรรณพร แก้วหาวงค์ (Wannaporn)',
+      name: 'วรรณพร แก้วหาวงศ์ (Wannaporn)',
       role: 'Frontend Developer',
       icon: Layout,
       skills: 'React, JavaScript, HTML/CSS, UI/UX, Component Design',
@@ -48,7 +48,7 @@ export default function App() {
       role: 'DevOps Engineer',
       icon: Server,
       skills: 'Docker, Nginx, GitHub Actions (CI/CD), Trivy, Render, Unit Test (node:test), Git/GitHub',
-      desc: 'สร้าง repo กลุ่มและวางโครง BE/FE, ทำ Dockerfile ของ BE/FE + Nginx Proxy, เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ ตั้งกฎป้องกัน main และดูแลค่าลับ'
+      desc: 'สร้าง repo กลุ่มและวางโครง BE/FE, ทำ Dockerfile ของ BE/FE + Nginx Proxy, เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ (build เฉพาะฝั่งที่เปลี่ยน), เขียน test API, ตั้งกฎป้องกัน main และดูแลค่าลับ'
     },
     {
       name: 'ณัฐนิชา ภูสิงห์ (Natnicha)',
@@ -84,6 +84,7 @@ export default function App() {
           role: 'assistant',
           text:
             error.response?.data?.error ||
+            error.message ||
             'ขออภัยครับ/ค่ะ ระบบไม่สามารถตอบกลับได้ในขณะนี้ กรุณาลองใหม่อีกครั้งในภายหลัง'
         }
       ]);
