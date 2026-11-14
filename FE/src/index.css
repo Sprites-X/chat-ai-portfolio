@@ -40,13 +40,6 @@
     background-color: #ffffff;
   }
 
-  body {
-    margin: 0;
-    display: flex;
-    min-width: 320px;
-    min-height: 100vh;
-  }
-
   #social .button-icon {
     filter: invert(1) brightness(2);
   }
