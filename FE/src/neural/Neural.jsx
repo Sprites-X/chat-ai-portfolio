@@ -153,7 +153,7 @@ export default function Neural() {
       <header className="top">
         <div className="brand"><span className="brain" aria-hidden="true" />ByteMind</div>
         <div className="top-actions">
-          <Link className="pill" to="/">← กลับห้อง</Link>
+          <Link className="pill" to="/room">← กลับห้อง</Link>
           <button className="pill" type="button" onClick={() => setTextView(true)}>ดูแบบข้อความ</button>
           <Link className="pill" to="/os?app=chat">คุยกับ AI</Link>
         </div>

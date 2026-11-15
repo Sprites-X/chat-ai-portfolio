@@ -3,6 +3,7 @@ import { navigate } from '../router.js';
 import { PEOPLE, MEMBERS, REPO_URL } from '../data/team.js';
 import { useMedia, useReducedMotion, useViewport, storage } from '../hooks.js';
 import { SCENES, IMAGES, ALT, HOT, POINTS, OBJECTS, objectAt, boxStyle, unionBox } from './scene.js';
+import { initialTimeOfDay, TOD_KEY } from './tod.js';
 import './room.css';
 
 // หนังสือ 3 เล่มบนชั้น = สมาชิก 3 คน
@@ -21,13 +22,6 @@ const TARGETS = {
   chat: { box: 'screen', to: '/os?app=chat', color: '#0C0A22' },
   neural: { box: 'model', to: '/neural', color: '#0D0A1A' },
 };
-
-function initialTimeOfDay() {
-  const saved = storage.get('bytemind-room-tod');
-  if (saved === 'day' || saved === 'night') return saved;
-  const hour = new Date().getHours();
-  return hour >= 6 && hour < 18 ? 'day' : 'night';
-}
 
 export default function Room() {
   const portrait = useMedia('(max-aspect-ratio: 4/5)');
@@ -87,7 +81,7 @@ export default function Room() {
   const [mounted, setMounted] = useState(() => [tod]);
   const toggleTod = () => {
     const next = tod === 'day' ? 'night' : 'day';
-    storage.set('bytemind-room-tod', next);
+    storage.set(TOD_KEY, next);
     setTod(next);
     setMounted((list) => (list.includes(next) ? list : [...list, next]));
     if (reduce) setShown(next);

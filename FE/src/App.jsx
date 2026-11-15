@@ -1,14 +1,16 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { useLocation } from './router.js';
+import Entry from './entry/Entry.jsx';
 import Room from './room/Room.jsx';
 
 // หน้า OS กับ Neural โหลดแยกไฟล์ (โหลดเมื่อเปิดหน้านั้นจริง) หน้าแรกจึงโหลดเร็วขึ้น
 const Os = lazy(() => import('./os/Os.jsx'));
 const Neural = lazy(() => import('./neural/Neural.jsx'));
 
-// 3 หน้าในแอปเดียว: ห้อง (/) → กดคอมไป ByteMind OS (/os) หรือกดโมเดลแก้วไปเครือข่ายทีม (/neural)
+// 4 หน้าในแอปเดียว: ประตูกลางทุ่ง (/) → ห้อง (/room) → กดคอมไป ByteMind OS (/os) หรือกดโมเดลแก้วไปเครือข่ายทีม (/neural)
 const ROUTES = {
-  '/': { page: Room, title: 'ByteMind · Chat AI Portfolio' },
+  '/': { page: Entry, title: 'ByteMind · Chat AI Portfolio' },
+  '/room': { page: Room, title: 'ห้องของทีม · ByteMind' },
   '/os': { page: Os, title: 'ByteMind OS · Chat AI Portfolio' },
   '/neural': { page: Neural, title: 'ByteMind Neural · Chat AI Portfolio' },
 };
