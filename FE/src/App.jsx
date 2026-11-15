@@ -17,7 +17,7 @@ const ROUTES = {
 
 export default function App() {
   const { path, query } = useLocation();
-  const route = ROUTES[path] || ROUTES['/'];
+  const route = ROUTES[path.replace(/\/+$/, '') || '/'] || ROUTES['/']; // /room/ กับ /room คือหน้าเดียวกัน
   const Page = route.page;
 
   useEffect(() => {
