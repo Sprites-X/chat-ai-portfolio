@@ -237,7 +237,7 @@ export default function Os({ query }) {
 
         <div className="menubar">
           <div className="mb-left">
-            <Link className="mb-btn" to="/">← ห้อง</Link>
+            <Link className="mb-btn" to="/room">← ห้อง</Link>
             <button className="mb-btn mb-brand" type="button" onClick={() => setLauncher(true)} aria-haspopup="dialog">
               <span className="os-mark" aria-hidden="true" />ByteMind OS
             </button>

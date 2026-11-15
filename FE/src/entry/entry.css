@@ -1,0 +1,106 @@
+/* หน้าแรก: ประตูกลางทุ่ง (สไตล์ทั้งหมดขึ้นต้นด้วย .entry จะได้ไม่ปนกับหน้าอื่น) */
+.entry {
+  --text: #f2f3fa;
+  --muted: #b8bcd4;
+  --line: rgba(220, 225, 255, 0.2);
+  --gold: #ffc145;
+  --ink: #10111e;
+  --display: 'Kanit', 'IBM Plex Sans Thai', sans-serif;
+  --body: 'IBM Plex Sans Thai', system-ui, sans-serif;
+  height: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--body);
+  color-scheme: dark;
+}
+.entry button { font: inherit; }
+
+/* ภาพทุ่งหญ้าเต็มจอ (ขนาด/ตำแหน่งคำนวณใน Entry.jsx) */
+.entry .view { position: fixed; inset: 0; overflow: hidden; background: #6f9bd8; }
+.entry.night .view { background: #060a1c; }
+.entry .stage { position: absolute; transform-origin: 50% 50%; }
+.entry .stage.zoom { transition: transform 1.25s cubic-bezier(0.55, 0, 0.25, 1); }
+.entry .layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+
+/* ห้องหลังประตู: อยู่ใต้บานประตู ซึ่งอยู่ใต้ทุ่งหญ้าอีกที */
+.entry .through { position: absolute; overflow: hidden; background: #0c0a22; }
+.entry .through img { width: 100%; height: 100%; object-fit: cover; object-position: 48% 50%; transform: scale(1.12); transition: transform 1.6s ease; }
+.entry.open .through img,
+.entry.arrive .through img { transform: scale(1); }
+.entry .spill { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 75%, rgba(255, 222, 170, 0.5), rgba(167, 139, 250, 0.2) 60%, transparent 85%); mix-blend-mode: screen; opacity: 0; transition: opacity 0.9s ease; }
+.entry.open .spill,
+.entry.arrive .spill { opacity: 1; }
+
+/* บานประตู: หมุนรอบบานพับด้านซ้าย */
+.entry .leafbox { position: absolute; perspective: 900px; pointer-events: none; }
+.entry .leaf { position: absolute; inset: 0; width: 100%; height: 100%; transform-origin: 0% 50%; transform: rotateY(0deg); transition: transform 1.05s cubic-bezier(0.45, 0.05, 0.2, 1); }
+.entry.peek .leaf { transform: rotateY(9deg); }
+.entry.open .leaf,
+.entry.arrive .leaf { transform: rotateY(96deg); }
+.entry .door-hit { position: absolute; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 4px; }
+.entry .door-hit:focus-visible { outline: 3px solid var(--gold); outline-offset: 6px; }
+
+/* กลางคืน: แสงจากห้องลอดรอบบานประตู */
+.entry .halo { position: absolute; pointer-events: none; border-radius: 3px; mix-blend-mode: screen; box-shadow: 0 0 18px 4px rgba(190, 150, 255, 0); transition: box-shadow 0.8s ease; }
+.entry.night .halo { box-shadow: 0 0 22px 3px rgba(190, 150, 255, 0.35); animation: entry-halo 3.4s ease-in-out infinite; }
+.entry.open .halo,
+.entry.arrive .halo { animation: none; box-shadow: 0 0 60px 18px rgba(255, 220, 170, 0.45); }
+@keyframes entry-halo { 50% { box-shadow: 0 0 30px 6px rgba(190, 150, 255, 0.5); } }
+
+/* กลางวันเป็นเมล็ดหญ้าลอย กลางคืนเป็นหิ่งห้อย */
+.entry .motes { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.entry .mote { position: absolute; margin: -3px; border-radius: 50%; background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.55); opacity: 0; animation: entry-drift var(--d) linear var(--delay) infinite; }
+.entry.night .mote { background: #ffe27a; box-shadow: 0 0 10px 4px rgba(255, 210, 90, 0.7); animation: entry-fly var(--d) ease-in-out var(--delay) infinite; }
+@keyframes entry-drift {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 0.9; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+}
+@keyframes entry-fly {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  20% { opacity: 1; }
+  50% { transform: translate(calc(var(--dx) * 0.12), calc(var(--dy) * 0.08)); opacity: 0.25; }
+  75% { opacity: 1; }
+}
+
+/* ภาพแรกของห้อง ค่อย ๆ ขึ้นตอนท้าย */
+.entry .final { position: fixed; inset: 0; z-index: 80; opacity: 0; transform: scale(1.05); transition: opacity 0.45s ease, transform 0.7s ease-out; pointer-events: none; }
+.entry .final img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.entry.arrive .final { opacity: 1; transform: scale(1); }
+
+/* กล่องเล็กมุมซ้ายล่าง */
+.entry .glass { background: rgba(10, 12, 24, 0.6); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.entry .card { position: fixed; left: clamp(20px, 4vw, 48px); bottom: clamp(20px, 5vh, 48px); width: max-content; max-width: calc(100vw - 40px); padding: 16px 18px; border-radius: 18px; transition: opacity 0.5s ease, transform 0.5s ease; }
+.entry.open .card,
+.entry.arrive .card { opacity: 0; transform: translateY(12px); }
+.entry .kicker { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.entry .btn-gold { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; padding: 0 18px; border-radius: 12px; border: 0; background: var(--gold); color: var(--ink); font-weight: 600; font-size: 15px; cursor: pointer; }
+.entry .btn-gold:hover { filter: brightness(1.06); }
+.entry .btn-gold:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.entry .hint { display: block; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.entry .tap { margin: 0; }
+
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  .entry .final img { object-position: 48.4% 52%; }
+  /* มือถือ: ป้ายเล็ก ๆ ด้านบน กับคำบอกให้แตะประตูด้านล่าง ประตูจะได้ไม่โดนบัง */
+  .entry .card { left: 50%; right: auto; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top, 0px)); bottom: auto; padding: 7px 14px; border-radius: 999px; text-align: center; }
+  .entry.open .card,
+  .entry.arrive .card { transform: translate(-50%, -12px); }
+  .entry .card .btn-gold,
+  .entry .hint { display: none; }
+  .entry .tap { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 9px 16px; border-radius: 999px; font-size: 14px; white-space: nowrap; transition: opacity 0.4s; }
+}
+@media (min-width: 761px) and (min-aspect-ratio: 4/5) {
+  .entry .tap { display: none; }
+}
+.entry.open .tap,
+.entry.arrive .tap { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .entry .mote,
+  .entry.night .halo { animation: none; }
+  .entry .leaf,
+  .entry .stage.zoom,
+  .entry .through img { transition-duration: 0.01s; }
+}
