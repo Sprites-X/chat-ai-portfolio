@@ -28,6 +28,51 @@ export const PEOPLE = {
     skills: ['Docker', 'Nginx', 'GitHub Actions (CI/CD)', 'Trivy', 'Render', 'Unit Test (node:test)', 'Git/GitHub'],
     work: 'สร้าง repo กลุ่มและวางโครง BE/FE ทำ Dockerfile และ Nginx Proxy เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ (build เฉพาะฝั่งที่เปลี่ยน) เขียน test API ตั้งกฎป้องกัน main และดูแลค่าลับ',
     email: 'phongsakon.sith@bumail.net',
+    // ผลงานส่วนตัว (นอกจากโปรเจกต์นี้) แสดงในห้อง, แอป team ของ OS และ Neural
+    // สมาชิกคนอื่นเพิ่มได้ด้วยรูปแบบเดียวกัน แล้วเติมใน PORTFOLIO_CONTEXT ของ BE/index.js ด้วย AI จะได้ตอบได้
+    projects: [
+      {
+        id: 'yolo',
+        name: 'YOLO Inference Optimization Benchmark',
+        short: 'YOLO Benchmark',
+        meta: 'งานเดี่ยว · 2026',
+        url: 'https://github.com/Sprites-X/YOLO-Inference-Optimization',
+        stack: ['Python', 'PyTorch', 'ONNX Runtime', 'TensorRT 10', 'CUDA'],
+        summary: 'เร่งความเร็ว YOLOv8n บน RTX 5060 จน TensorRT FP16 ได้ 702 FPS เร็วกว่า PyTorch 2.6 เท่า โดยความแม่นยำเท่าเดิม',
+        points: [
+          'วัด YOLOv8n 7 แบบ ทั้ง PyTorch FP32, ONNX Runtime, TensorRT FP16 และ INT8 บน CPU และ RTX 5060 โดยเช็กผลของทุกแบบกับ PyTorch ก่อนจับเวลา',
+          'TensorRT FP16 ได้ 702 FPS เร็วกว่า PyTorch บน GPU เดียวกัน 2.60 เท่า mAP50-95 เท่าเดิม และใช้ profiling รายเลเยอร์อธิบายว่าทำไม INT8 ทั้งช้ากว่าและแม่นน้อยกว่าบนโมเดลนี้',
+          'ไล่หาสาเหตุที่ mAP วัดได้ 0.365 ไม่ตรงกับ 0.373 ที่ Ultralytics ประกาศ จนพบว่ามาจาก NMS ที่เลือก label เดียวต่อกล่อง',
+          'ล็อกเวอร์ชัน dependency และเพิ่มขั้นตรวจ environment ก่อนรัน หลังแก้ปัญหา CUDA, TensorRT และ PYTHONPATH ชนกัน',
+        ],
+      },
+      {
+        id: 'erp',
+        name: 'ERP Helpdesk Agent',
+        short: 'ERP Helpdesk Agent',
+        meta: 'งานเดี่ยว · 2026',
+        url: 'https://github.com/Sprites-X/erp-helpdesk-agent',
+        stack: ['Python', 'LangGraph', 'ChromaDB', 'Ollama', 'pytest', 'GitHub Actions'],
+        summary: 'ผู้ช่วย helpdesk ภาษาไทยแบบหลาย agent รันบนเครื่องตัวเอง ตอบจากคู่มือ ERP พร้อมประโยคหลักฐาน หรือเปิด ticket แทนการเดา',
+        points: [
+          'ตอบคำถามการใช้โปรแกรม ERP จากคู่มือพร้อมยกประโยคหลักฐาน ถ้าคู่มือไม่มีคำตอบจะเปิด ticket ที่สรุปปัญหาไว้ให้ทีม support',
+          'ตัดสินใจถูก 19 จาก 20 ข้อกับคำถามที่ระบบไม่เคยเห็น และไม่เคยตอบข้อที่ควรเปิด ticket โค้ดตรวจทุกครั้งว่าประโยคหลักฐานมีอยู่จริงในคู่มือ',
+          'ลดเวลาตอบจาก 10.7 เหลือ 2.8 วินาที โดยจับเวลาแยกทีละขั้นจนพบว่า localhost บน Windows เสียเวลาไปกับ IPv6 มี unit test 76 ข้อรันใน CI',
+        ],
+      },
+      {
+        id: 'tb3',
+        name: 'TurtleBot3 Person Detection',
+        short: 'TurtleBot3',
+        meta: 'งานกลุ่ม 3 คน · วิชา Robotics · 2026',
+        stack: ['ROS 2 Humble', 'Python', 'YOLO', 'TurtleBot3 (simulation)'],
+        summary: 'หุ่น TurtleBot3 ในซิมเรียก service ตรวจจับคนด้วย YOLO ทุก 0.5 เมตรที่เดิน แล้วบันทึกผลพร้อมตำแหน่ง',
+        points: [
+          'หุ่น TurtleBot3 ในซิมเรียก ROS 2 service ตรวจจับคนด้วย YOLO ทุกครั้งที่เดินครบ 0.5 เมตร และบันทึกผลพร้อมตำแหน่งของหุ่น',
+          'หน้าที่ของพงศกร: เขียน node นับระยะทางจาก odometry (subscribe /odom สะสมระยะทาง แล้วเรียก service) และวางแผนงานของทั้งโปรเจกต์',
+        ],
+      },
+    ],
   },
 };
 

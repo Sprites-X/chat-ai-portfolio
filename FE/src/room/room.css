@@ -86,6 +86,14 @@
 .room .mb i { width: 12px; height: 24px; border-radius: 3px; display: inline-block; }
 .room .hint { right: 20px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); font-size: 13px; color: var(--muted); padding: 8px 14px; border-radius: 999px; }
 .room .card { left: 50%; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(470px, calc(100vw - 24px)); padding: 18px; border-radius: 18px; display: grid; gap: 10px; }
+/* การ์ดสมาชิกที่มีผลงานส่วนตัวยาวกว่าจอได้ (โดยเฉพาะมือถือ) จึงจำกัดความสูงแล้วให้เลื่อนในการ์ด */
+.room .card { max-height: calc(100dvh - 190px - env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain; background: rgba(10, 12, 24, 0.88); }
+/* ระหว่างเปิดการ์ด ซ่อนคำแนะนำด้านล่างที่ทับขอบล่างของการ์ดบนมือถือ */
+.room:has(#room-card) .hint,
+.room:has(#room-card) .pan-hint { visibility: hidden; }
+/* ป้ายลอยในห้อง (คอม, โมเดลแก้ว, หนังสือ) ก็ซ่อนด้วย ไม่ให้สีของป้ายทะลุการ์ดขึ้นมาทับตัวหนังสือ */
+.room:has(#room-card) .label,
+.room:has(#room-card) .group-label { visibility: hidden; }
 .room .card[hidden] { display: none; }
 .room .card h2 { font-size: 22px; }
 .room .card .role { color: var(--muted); font-size: 14px; }
