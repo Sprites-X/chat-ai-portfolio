@@ -21,4 +21,6 @@ COPY --from=build /out /usr/share/nginx/html
 
 # Render ส่งค่า PORT มาให้เอง ค่านี้ใช้ตอนรันในเครื่อง
 ENV PORT=80
+# จำนวนคำถามต่อนาทีต่อผู้ใช้ 1 คนที่ nginx ยอมส่งต่อไป BE (ตั้งค่าใหม่ได้ที่หน้า Environment บน Render)
+ENV CHAT_RATE_PER_MIN=20
 EXPOSE 80

@@ -54,7 +54,7 @@ flowchart LR
   BE --> AI[Gemini API]
 ```
 
-หน้าเว็บส่งข้อความไปที่ `/api/chat` ของ FE เอง แล้ว Nginx ใน container ของ FE ส่งต่อไปที่ BE ตามค่า `BE_URL` จึงไม่ติด CORS
+หน้าเว็บส่งข้อความไปที่ `/api/chat` ของ FE เอง แล้ว Nginx ใน container ของ FE ส่งต่อไปที่ BE ตามค่า `BE_URL` จึงไม่ติด CORS (BE จึงไม่ต้องเปิด CORS ให้เว็บอื่น)
 BE แนบข้อมูล Portfolio เป็น system instruction แล้วส่งคำถามให้ Gemini จากนั้นบันทึกคำถามและคำตอบลงตาราง `chat_history` แล้วส่งคำตอบกลับ
 
 ## โครงสร้างโปรเจกต์
@@ -134,7 +134,7 @@ npm ci
 npm run dev
 ```
 
-เปิดเว็บที่ `http://localhost:5173` (หน้า `/room`, `/os` และ `/neural` เปิดตรง ๆ หรือรีเฟรชได้ เพราะทั้ง Vite และ nginx ตอบ `index.html` ให้ทุก path)
+เปิดเว็บที่ `http://localhost:5173` (หน้า `/room`, `/os` และ `/neural` เปิดตรง ๆ หรือรีเฟรชได้ เพราะทั้ง Vite และ nginx ตอบ `index.html` ให้ทุก path ที่ไม่ใช่ไฟล์ ส่วนไฟล์ที่ไม่มีอยู่ เช่น ภาพที่พิมพ์ path ผิด nginx ตอบ 404)
 
 หน้าเว็บเรียก BE ด้วย path สั้น `/api/chat` เสมอ ถ้าจะลองแชตตอนรันในเครื่อง ให้เพิ่มค่านี้ใน `vite.config.js` เพื่อให้ dev server ส่งต่อไปที่ BE:
 
@@ -164,6 +164,7 @@ server: {
 | `GEMINI_API_KEY` | Gemini API key | `your_gemini_api_key` |
 | `PORT` | พอร์ตของ server (Render ตั้งให้เอง) | `5000` |
 | `GEMINI_MODEL` | โมเดล Gemini ตัวแรกที่ลองใช้ (ไม่ใส่ก็ได้) ถ้าไม่ว่างจะสลับไปโมเดลสำรองเอง | `gemini-3.8-flash` |
+| `RATE_LIMIT_PER_MINUTE` | จำนวน request ต่อนาทีต่อ IP ที่ BE รับ (ไม่ใส่ก็ได้ ค่าเริ่มต้น `60`) ดูหัวข้อ [จำกัดจำนวนคำถาม](#จำกัดจำนวนคำถาม-rate-limit) | `60` |
 
 > หากไม่ได้ตั้ง `GEMINI_API_KEY` หรือ Gemini ตอบ error ที่ไม่ใช่เรื่องไม่ว่าง (เช่น key ผิด) บอทจะตอบเป็นข้อความ `[ระบบตอบรับอัตโนมัติ]` แทนคำตอบจาก AI
 
@@ -173,6 +174,7 @@ server: {
 |---|---|---|
 | `BE_URL` | URL ของ BE ขึ้นต้นด้วย `https://` และ**ห้ามมี `/` ท้าย** | `https://chat-ai-portfolio-be.onrender.com` |
 | `PORT` | พอร์ตของ nginx (Render ตั้งให้เอง) | `80` |
+| `CHAT_RATE_PER_MIN` | จำนวนคำถามต่อนาทีต่อผู้ใช้ 1 คนที่ nginx ยอมส่งต่อไป BE (ไม่ใส่ก็ได้ ค่าเริ่มต้น `20` ตั้งไว้ใน Dockerfile) | `20` |
 
 ## API
 
@@ -198,7 +200,20 @@ Response `200`:
 |---|---|---|
 | `400` | ไม่มี `message`, เป็นข้อความว่างหรือมีแต่ช่องว่าง, ไม่ใช่ข้อความ หรือไม่ได้ส่งมาเป็น JSON | `{ "error": "Message is required" }` |
 | `400` | `message` ยาวเกิน 1,000 ตัวอักษร (ช่องพิมพ์ในหน้าเว็บก็จำกัดไว้ที่ 1,000) | `{ "error": "ข้อความยาวเกินไป (สูงสุด 1000 ตัวอักษร)" }` |
+| `429` | ส่งถี่เกินกำหนด (ดูหัวข้อถัดไป) | `{ "error": "ส่งข้อความถี่เกินไป รอสักครู่แล้วลองใหม่นะ" }` |
 | `503` | Gemini ไม่ว่างทุกโมเดล (ตอบ 429/500/503) | `{ "error": "AI มีผู้ใช้งานเยอะ ลองใหม่อีกครั้งนะ" }` |
+
+### จำกัดจำนวนคำถาม (rate limit)
+
+กันคนยิง `/api/chat` รัว ๆ จนโควตา Gemini หมด (คนอื่นจะได้ `503` ตาม) และตาราง `chat_history` โตไม่หยุด จำกัดไว้ 2 ชั้น
+
+| ชั้น | นับตาม | ค่าเริ่มต้น | เปลี่ยนที่ |
+|---|---|---|---|
+| nginx ของ FE | IP จริงของผู้ใช้แต่ละคน (header `CF-Connecting-IP` ที่ Cloudflare หน้า Render ใส่มา ผู้ใช้ปลอมเองไม่ได้) | 20 ครั้ง/นาที ส่งติดกันได้ 10 ครั้งก่อนเริ่มนับ | `CHAT_RATE_PER_MIN` ของ service FE |
+| BE (`express-rate-limit`) | IP ที่เรียก BE ใช้กับคนที่ยิง BE ตรง ๆ ส่วนคำถามจากหน้าเว็บมาจาก nginx จึงนับรวมเป็น IP ของ FE | 60 ครั้ง/นาที | `RATE_LIMIT_PER_MINUTE` ของ service BE |
+
+ทั้งสองชั้นตอบ `429` พร้อม `error` เป็น JSON หน้าแชตแสดงข้อความนี้ทันทีโดยไม่ส่งซ้ำ ส่วน BE ส่ง header `RateLimit` บอกจำนวนครั้งที่เหลือ (`r=`)
+ถ้าวันนำเสนอมีคนใช้พร้อมกันจาก Wi-Fi เดียวกัน (IP เดียวกัน) แล้วติด 429 ให้เพิ่ม `CHAT_RATE_PER_MIN` ที่หน้า Environment ของ service FE ได้เลย ไม่ต้องแก้โค้ด
 
 ## AI ตอบจากข้อมูลอะไร
 
@@ -246,15 +261,19 @@ test ทุกข้อไม่ต้องใช้ฐานข้อมูล
 | `server.test.js` | `POST /api/chat` body ไม่ใช่ JSON | `400` (ไม่ใช่ `500`) |
 | `server.test.js` | `POST /api/chat` ข้อความปกติ | `200` พร้อม `reply` |
 | `server.test.js` | `GET /api/chat` | `404` |
+| `server.test.js` | เรียกจากเว็บอื่น (มี `Origin`) | ไม่มี `Access-Control-Allow-Origin` (ไม่เปิด CORS) |
+| `server.test.js` | ส่งเกินโควตาต่อนาที (test ตั้งไว้ 3 ครั้ง) | `429` พร้อม `error` และ header `RateLimit` |
+| `server.test.js` | IP อื่น (`CF-Connecting-IP` ต่างกัน) | ไม่โดนบล็อกตาม IP ที่ส่งเกิน |
 | `api.test.js` | `POST /api/chat` ไม่มี `message` | `400` และ `error` = `Message is required` |
 
-ผลที่ถูกต้องคือ `tests 10`, `pass 10`
+ผลที่ถูกต้องคือ `tests 13`, `pass 13`
 
-ฝั่ง FE ตรวจด้วยการ build ถ้า build ผ่าน แปลว่า React compile ได้ไม่มี error
+ฝั่ง FE ตรวจด้วย lint (oxlint ตาม `.oxlintrc.json`) และ build ถ้า build ผ่าน แปลว่า React compile ได้ไม่มี error
 
 ```bash
 cd FE
 npm ci
+npm run lint
 npm run build
 ```
 
@@ -273,13 +292,18 @@ flowchart LR
 
 | ขั้น | Job | ทำอะไร | ทำงานเมื่อ |
 |---|---|---|---|
-| test | `test-be`, `test-fe` | ตรวจ syntax, test และ build ของ BE/FE | ทุก branch และ Pull Request |
-| build | `build-be`, `build-fe` | build Docker image แล้ว push `:latest` และ `:<commit SHA>` ขึ้น Docker Hub | push เข้า `main` และโค้ดฝั่งนั้นเปลี่ยน |
-| scan | `scan-be`, `scan-fe` | ตรวจช่องโหว่ด้วย Trivy ไม่ผ่านเมื่อพบ CRITICAL ที่แก้ไขได้แล้ว | หลัง build ผ่าน |
-| deploy | `deploy-be`, `deploy-fe` | เรียก Deploy Hook ให้ Render ดึง image ล่าสุด | หลัง scan ผ่าน |
+| test | `test-be`, `test-fe` | BE: ตรวจ syntax และ test · FE: lint และ build | ทุก branch และ Pull Request |
+| build | `build-be`, `build-fe` | build Docker image แล้ว push เฉพาะ `:<commit SHA>` ขึ้น Docker Hub | push เข้า `main` และโค้ดฝั่งนั้นเปลี่ยน |
+| scan | `scan-be`, `scan-fe` | ตรวจ image `:<commit SHA>` ด้วย Trivy ไม่ผ่านเมื่อพบ CRITICAL ที่แก้ไขได้แล้ว | หลัง build ผ่าน |
+| deploy | `deploy-be`, `deploy-fe` | ย้าย `:latest` มาที่ image ที่ผ่าน scan แล้วเรียก Deploy Hook พร้อม `imgURL` ให้ Render deploy `:<commit SHA>` ตัวนั้นตรง ๆ | หลัง scan ผ่าน |
 
 แต่ละ job ต่อกันด้วย `needs` หากขั้นใดไม่ผ่าน ขั้นถัดไปจะไม่ทำงาน โค้ดที่มีปัญหาจึงไม่ถูก deploy
+image ที่ยังไม่ผ่าน scan มีแค่ tag `:<commit SHA>` จึงไม่มีทางขึ้นเว็บ แม้มีคนกด Manual Deploy บน Render (ซึ่งดึง `:latest`)
 สาย BE กับ FE แยกกัน ถ้าฝั่งหนึ่งพัง อีกฝั่งยัง deploy ได้ และถ้ายังไม่มีโฟลเดอร์ `FE/` job ฝั่ง FE จะขึ้นเป็น skipped
+
+**merge หลาย PR ติดกัน** job deploy ของแต่ละฝั่งทำทีละรอบ (`concurrency`) และก่อน deploy จะเช็กว่า `main` มี commit ใหม่กว่าที่แก้โค้ดฝั่งนั้นหรือยัง ถ้ามี รอบนี้จะข้าม (ขึ้น notice ใน log) ให้รอบของ commit ใหม่ deploy แทน image เก่าจึงไม่ deploy ทับ image ใหม่
+
+**Trivy** ใช้ image `aquasec/trivy:0.58.0` ล็อกด้วย digest (`@sha256:...` ในค่า `TRIVY_IMAGE` บนสุดของไฟล์ workflow) เพราะ tag บน Docker Hub ถูกชี้ไปที่ image อื่นได้ เคยเกิดจริงเมื่อมีนาคม 2026 ที่ tag `0.69.4`–`0.69.6` และ `latest` ของ Trivy ถูกแทนด้วย image ที่ฝังมัลแวร์ และ job scan ไม่ได้ถือ secret ใด ๆ
 
 job `detect` เทียบไฟล์ที่ push แต่ละครั้งแก้ แล้ว build/deploy **เฉพาะฝั่งที่โค้ดเปลี่ยน**
 - แก้ไฟล์ใน `BE/` → build และ deploy แค่ BE
@@ -305,7 +329,7 @@ test ยังรันทุกครั้ง ถ้าต้องการ d
 **การป้องกัน branch `main`** (Settings → Rules → Rulesets → `protect-main`)
 
 - ต้องแก้ผ่าน Pull Request เท่านั้น push ตรงเข้า `main` จะถูกปฏิเสธ
-- ต้องผ่าน status check `test-be` ก่อนถึงจะกด Merge ได้
+- ต้องผ่าน status check `test-be` และ `test-fe` ก่อนถึงจะกด Merge ได้
 - ห้าม force push และห้ามลบ `main`
 
 **ขั้นตอนส่งงานเข้า `main`**
@@ -332,6 +356,8 @@ git push -u origin <ชื่อ-branch>
 6. คัดลอก Deploy Hook ของทั้งสอง service (Settings → Deploy Hook) ไปใส่ใน GitHub Secrets
 7. จากนั้นทุกครั้งที่ push เข้า `main` เว็บจะอัปเดตเอง
 
+> image URL ของ service บน Render ต้องเป็น `docker.io/<DOCKERHUB_USERNAME>/portfolio-be:latest` (และ `portfolio-fe`) ตรงกับชื่อที่ pipeline push เพราะตอน deploy pipeline ส่ง `imgURL` ที่เปลี่ยนแค่ tag เป็น `:<commit SHA>` ถ้าส่วนอื่นไม่ตรง Render จะปฏิเสธ (400)
+
 ## Troubleshooting
 
 | อาการ | สาเหตุที่พบบ่อย | วิธีแก้ |
@@ -348,6 +374,10 @@ git push -u origin <ชื่อ-branch>
 | `test-be` ไม่ผ่าน | แก้ response ของ BE แต่ไม่ได้แก้ test | ดู expected/actual ใน log แล้วแก้ test ให้ตรง |
 | `docker login: unauthorized` หรือ image ชื่อ `/portfolio-be` | ไม่ได้ตั้ง `DOCKERHUB_USERNAME` ในแท็บ Variables, ชื่อ secret ผิด หรือ token หมดอายุ | ตรวจชื่อและแท็บที่ใส่ แล้วสร้าง token ใหม่ |
 | deploy ได้ 401/404 หรือ `no URL specified` | Hook URL ผิด ถูก Regenerate หรือยังไม่ได้ตั้ง secret | คัดลอก URL ใหม่ไปใส่ใน Secrets |
+| deploy ได้ `400` | image URL ของ service บน Render ไม่ตรงกับ `docker.io/<DOCKERHUB_USERNAME>/portfolio-xx` ที่ pipeline ส่งไปใน `imgURL` | แก้ image URL ใน Settings ของ service บน Render ให้ตรง (tag เป็น `:latest`) |
+| job deploy ผ่านแต่ขึ้น notice ว่า `main มีโค้ด ... ใหม่กว่า` | merge PR ติดกัน รอบนี้ข้ามให้รอบของ commit ใหม่ deploy แทน | ปกติ ไม่ต้องทำอะไร ดูรอบล่าสุดในแท็บ Actions |
+| แชตขึ้น "ส่งข้อความถี่เกินไป" (`429`) | ส่งเกินโควตาต่อนาที หรือหลายคนใช้จาก IP เดียวกัน | รอสักครู่ หรือเพิ่ม `CHAT_RATE_PER_MIN` (FE) / `RATE_LIMIT_PER_MINUTE` (BE) ที่หน้า Environment บน Render |
+| เปิดหน้าเว็บค้างไว้ข้าม deploy แล้วหน้าโหลดใหม่เองหนึ่งครั้งตอนกดเข้า OS/Neural | ไฟล์ JS ชุดเก่าถูกลบไปแล้ว หน้าเว็บจึงโหลด `index.html` ชุดใหม่ (`vite:preloadError` ใน `main.jsx`) | ปกติ ไม่ต้องทำอะไร |
 | scan ได้ `UNAUTHORIZED` หรือหา image ไม่เจอ | repo ของ image บน Docker Hub ตั้งเป็น private | ตั้ง repo `portfolio-be` / `portfolio-fe` บน Docker Hub เป็น public |
 | build/scan/deploy ขึ้น skipped | push ไป branch อื่น, เป็น Pull Request หรือ commit นั้นไม่ได้แก้โค้ดฝั่งนั้น (เช่น แก้แค่ `.md`) | merge เข้า `main` หรือกด Run workflow ในแท็บ Actions เพื่อ deploy ใหม่ทั้งหมด |
-| pipeline เขียวแต่เว็บไม่เปลี่ยน | service บน Render ไม่ได้ชี้ไปที่ `:latest` | ตรวจ image URL ใน Settings ของ service บน Render |
+| pipeline เขียวแต่เว็บไม่เปลี่ยน | job deploy ข้ามเพราะมี commit ใหม่กว่า หรือ Render deploy ไม่สำเร็จ (เช่น ดึง image ไม่ได้) | ดูรอบล่าสุดในแท็บ Actions และหน้า Events ของ service บน Render |

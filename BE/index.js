@@ -1,11 +1,12 @@
 const express = require('express');
-const cors = require('cors');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
 const { Pool } = require('pg');
 
 const app = express();
-app.use(cors());
+// ไม่เปิด CORS: หน้าเว็บเรียก /api/chat ผ่าน nginx ของ FE ซึ่งเป็นโดเมนเดียวกัน
+// เว็บอื่นจึงสั่งเบราว์เซอร์ของผู้ใช้ให้ยิง API นี้แทนไม่ได้ (curl/Postman ยังเรียกได้ตามปกติ)
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
@@ -79,7 +80,23 @@ async function askGemini(ai, message) {
 // จำกัดความยาวคำถาม กันข้อความยาวผิดปกติไปถึง Gemini และฐานข้อมูล
 const MAX_MESSAGE_LENGTH = 1000;
 
-app.post('/api/chat', async (req, res) => {
+// จำกัดจำนวน request ต่อ IP ต่อนาที กันคนยิง BE ตรง ๆ รัว ๆ จนโควตา Gemini หมดและตาราง chat_history โตไม่หยุด
+// IP จริงอยู่ใน CF-Connecting-IP ที่ Cloudflare หน้า Render ใส่มาให้ ถ้าไม่มี (รันในเครื่อง/test) ใช้ IP ที่ต่อเข้ามา
+// คำถามจากหน้าเว็บมาผ่าน nginx ของ FE จึงนับรวมเป็น IP ของ FE ค่าที่นี่จึงตั้งสูงกว่า
+// ส่วนการจำกัดรายคนของคนที่ใช้หน้าเว็บอยู่ที่ nginx ของ FE (CHAT_RATE_PER_MIN)
+const RATE_LIMIT_PER_MINUTE = Number(process.env.RATE_LIMIT_PER_MINUTE) || 60;
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: RATE_LIMIT_PER_MINUTE,
+  standardHeaders: 'draft-8', // ส่ง header RateLimit บอกโควตาที่เหลือ
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.get('cf-connecting-ip') || req.socket.remoteAddress || 'unknown'),
+  // ตั้งใจไม่ใช้ X-Forwarded-For (ผู้ใช้เติมค่าปลอมเองได้) จึงปิดคำเตือนของ library เรื่อง header นี้
+  validate: { xForwardedForHeader: false },
+  message: { error: 'ส่งข้อความถี่เกินไป รอสักครู่แล้วลองใหม่นะ' },
+});
+
+app.post('/api/chat', chatLimiter, async (req, res) => {
   // req.body เป็น undefined ได้ถ้าไม่ได้ส่งมาเป็น JSON และ message ต้องเป็นข้อความเท่านั้น
   const raw = req.body?.message;
   const message = typeof raw === 'string' ? raw.trim() : '';

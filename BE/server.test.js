@@ -8,7 +8,6 @@ const net = require('node:net');
 
 let server;
 let base;
-let logs = '';
 
 // ขอพอร์ตว่างจากระบบ จะได้ไม่ชนกับโปรแกรมอื่นในเครื่อง
 function freePort() {
@@ -22,28 +21,36 @@ function freePort() {
   });
 }
 
-before(async () => {
+// เปิด `node index.js` บนพอร์ตว่าง รอจนรับ request ได้ แล้วคืน { base, proc }
+// extraEnv ใช้ตั้งค่าเพิ่ม เช่น RATE_LIMIT_PER_MINUTE ของชุด test rate limit
+async function startServer(extraEnv = {}) {
   const port = await freePort();
-  base = `http://127.0.0.1:${port}`;
+  const url = `http://127.0.0.1:${port}`;
+  let logs = '';
 
-  server = spawn(process.execPath, ['index.js'], {
+  const proc = spawn(process.execPath, ['index.js'], {
     cwd: __dirname,
     // ตั้งค่าว่างไว้ dotenv จะไม่เขียนทับ test จึงไม่ไปแตะ DB หรือ Gemini จริงแม้ในเครื่องจะมี .env
-    env: { ...process.env, PORT: String(port), DATABASE_URL: '', GEMINI_API_KEY: '' },
+    env: { ...process.env, PORT: String(port), DATABASE_URL: '', GEMINI_API_KEY: '', ...extraEnv },
   });
-  server.stdout.on('data', (d) => (logs += d));
-  server.stderr.on('data', (d) => (logs += d));
+  proc.stdout.on('data', (d) => (logs += d));
+  proc.stderr.on('data', (d) => (logs += d));
 
   // รอจน server รับ request ได้ (สูงสุด 10 วินาที)
   for (let i = 0; i < 100; i++) {
     try {
-      await fetch(base);
-      return;
+      await fetch(url);
+      return { base: url, proc };
     } catch {
       await new Promise((r) => setTimeout(r, 100));
     }
   }
+  proc.kill();
   throw new Error(`server ไม่ขึ้นภายใน 10 วินาที\n${logs}`);
+}
+
+before(async () => {
+  ({ base, proc: server } = await startServer());
 });
 
 after(() => server?.kill());
@@ -113,5 +120,56 @@ describe('route ที่ไม่มีอยู่', () => {
   it('GET /api/chat ได้ 404 เพราะรับเฉพาะ POST', async () => {
     const res = await fetch(`${base}/api/chat`);
     assert.equal(res.status, 404);
+  });
+});
+
+describe('CORS', () => {
+  it('ไม่อนุญาตให้เว็บอื่นเรียก API ผ่านเบราว์เซอร์ (ไม่มี Access-Control-Allow-Origin)', async () => {
+    const origin = 'https://other-site.example';
+    const preflight = await fetch(`${base}/api/chat`, {
+      method: 'OPTIONS',
+      headers: { Origin: origin, 'Access-Control-Request-Method': 'POST' },
+    });
+    assert.equal(preflight.headers.get('access-control-allow-origin'), null);
+
+    const res = await fetch(`${base}/api/chat`, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    assert.equal(res.headers.get('access-control-allow-origin'), null);
+  });
+});
+
+describe('จำกัดจำนวนครั้งต่อนาที (rate limit)', () => {
+  // เปิด server อีกตัวที่ตั้งโควตาไว้แค่ 3 ครั้ง/นาที จะได้ไม่กระทบ test ชุดอื่น
+  let rl;
+  before(async () => {
+    rl = await startServer({ RATE_LIMIT_PER_MINUTE: '3' });
+  });
+  after(() => rl?.proc.kill());
+
+  const post = (headers = {}) =>
+    fetch(`${rl.base}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({}),
+    });
+
+  it('ส่งเกินโควตาได้ 429 พร้อม error และ header RateLimit', async () => {
+    for (let i = 0; i < 3; i++) {
+      assert.equal((await post()).status, 400); // ยังไม่เกินโควตา ได้ผลตามปกติ
+    }
+    const res = await post();
+    assert.equal(res.status, 429);
+    assert.ok(res.headers.get('ratelimit'));
+    const data = await res.json();
+    assert.match(data.error, /ถี่เกินไป/);
+  });
+
+  it('นับแยกตาม IP ผู้ใช้ใน CF-Connecting-IP', async () => {
+    // IP อื่นมีโควตาของตัวเอง ไม่โดนบล็อกตาม IP ที่ส่งเกินในข้อก่อน
+    const res = await post({ 'CF-Connecting-IP': '203.0.113.7' });
+    assert.equal(res.status, 400);
   });
 });
