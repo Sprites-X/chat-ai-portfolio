@@ -15,7 +15,7 @@ const INITIAL_LOG = [
   { t: '$ merge PR → main  # แก้ FE/src/App.jsx' },
   { t: 'detect     be-changed=false fe-changed=true' },
   { t: 'build-be   ข้าม · โค้ด BE ไม่เปลี่ยน', c: 'dim' },
-  { t: 'deploy-fe  ยิง Deploy Hook ของ Render ✓' },
+  { t: 'deploy-fe  :latest → image ที่ผ่าน scan · Render deploy :SHA ✓' },
   { t: 'เสร็จ · เว็บจริงอัปเดตแล้ว', c: 'ok' },
 ];
 const pad = (s) => s.padEnd(11, ' ');
@@ -40,7 +40,7 @@ export default function Pipeline() {
     setJob('test-' + side, 'run');
     await pause(side === 'be' ? 1100 : 1400);
     setJob('test-' + side, 'pass');
-    say(pad('test-' + side) + (side === 'be' ? 'node --test ✓' : 'npm run build ✓'));
+    say(pad('test-' + side) + (side === 'be' ? 'node --test ✓' : 'npm run lint ✓ · npm run build ✓'));
     if (!changed) {
       ['build', 'scan', 'deploy'].forEach((k) => setJob(`${k}-${side}`, 'skip'));
       say(pad('build-' + side) + `ข้าม · โค้ด ${side.toUpperCase()} ไม่เปลี่ยน`, 'dim');
@@ -57,7 +57,7 @@ export default function Pipeline() {
     setJob('deploy-' + side, 'run');
     await pause(800);
     setJob('deploy-' + side, 'pass');
-    say(pad('deploy-' + side) + 'Render deploy hook ✓');
+    say(pad('deploy-' + side) + `:latest → ${sha} · Render deploy portfolio-${side}:${sha} ✓`);
   }
 
   async function merge() {

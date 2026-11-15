@@ -5,6 +5,9 @@
 # push เข้า main เท่านั้น       : test → build → scan → deploy ขึ้น Render
 #                                 เฉพาะฝั่งที่โค้ดเปลี่ยน (แก้แค่ไฟล์ .md จะไม่ build/deploy)
 #
+# image ที่ยังไม่ผ่าน scan มีแค่ tag :SHA เท่านั้น
+# :latest ถูกย้ายมาชี้ที่ image ตอน deploy (หลัง scan ผ่าน) และ Render ได้รับคำสั่งให้ deploy :SHA ตัวนั้นตรง ๆ
+#
 # ตั้งค่าที่ GitHub → Settings → Secrets and variables → Actions
 #   Variables (ค่าธรรมดา)
 #     DOCKERHUB_USERNAME      ชื่อบัญชี Docker Hub
@@ -28,6 +31,12 @@ on:
 # ให้ token ของ workflow อ่าน repo ได้อย่างเดียว
 permissions:
   contents: read
+
+env:
+  # ตัวสแกน Trivy ล็อกด้วย digest ไม่ใช่แค่ชื่อ tag เพราะ tag บน Docker Hub ถูกชี้ไปที่ image อื่นได้
+  # (มีนาคม 2026 tag 0.69.4–0.69.6 และ latest ของ aquasec/trivy ถูกแทนด้วย image ที่ฝังมัลแวร์)
+  # digest นี้คือ 0.58.0 ที่ push ไว้ตั้งแต่ 3 ธ.ค. 2024 ก่อนเหตุการณ์นั้น
+  TRIVY_IMAGE: aquasec/trivy:0.58.0@sha256:b88012e2a0a309d6a8a00463d4e63e5e513377fb74eccbc8f9b0f8f81940ebeb
 
 jobs:
   # ---------- ตรวจก่อนเริ่มว่าแต่ละฝั่งต้องทำอะไร ----------
@@ -118,10 +127,11 @@ jobs:
         env:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       # runner เป็น Linux amd64 อยู่แล้ว จึงไม่ต้องระบุ --platform และไม่ต้องใช้ dind
-      - name: build และ push :latest กับ :SHA
+      # push แค่ :SHA ยังไม่แตะ :latest จนกว่าจะผ่าน scan
+      - name: build และ push :SHA
         run: |
-          docker build -t "$IMAGE:latest" -t "$IMAGE:${GITHUB_SHA::7}" ./BE
-          docker push "$IMAGE" --all-tags
+          docker build -t "$IMAGE:${GITHUB_SHA::7}" ./BE
+          docker push "$IMAGE:${GITHUB_SHA::7}"
 
   # ---------- STAGE: scan ----------
   scan-be:
@@ -133,23 +143,60 @@ jobs:
       # รายงาน HIGH + CRITICAL ให้อ่าน ไม่ทำให้ job พัง
       - name: trivy รายงาน
         run: |
-          docker run --rm aquasec/trivy:0.58.0 image --exit-code 0 \
+          docker run --rm "$TRIVY_IMAGE" image --exit-code 0 \
             --severity HIGH,CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
       # ด่านตรวจ: พังเมื่อเจอ CRITICAL ที่มีเวอร์ชันแก้แล้ว
       - name: trivy ด่านตรวจ CRITICAL
         run: |
-          docker run --rm aquasec/trivy:0.58.0 image --exit-code 1 \
+          docker run --rm "$TRIVY_IMAGE" image --exit-code 1 \
             --severity CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
 
   # ---------- STAGE: deploy ----------
   deploy-be:
     needs: scan-be
     runs-on: ubuntu-latest
+    # deploy BE ทีละรอบ ถ้า merge ติดกัน รอบหลังจะรอรอบแรกเสร็จก่อน (ไม่ยกเลิกรอบที่กำลัง deploy)
+    concurrency:
+      group: deploy-be
+      cancel-in-progress: false
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-be
+      APP_DIR: BE
     steps:
-      # -f ทำให้ job พังเมื่อ Render ตอบกลับเป็น error
-      - run: curl -fsS -X POST "$DEPLOY_HOOK"
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # ถ้าระหว่างนี้มี commit ใหม่ใน main ที่แก้โค้ด BE ด้วย รอบของ commit นั้นจะ deploy แทน
+      # รอบนี้ข้ามไป กัน image เก่า deploy ทับ image ใหม่เมื่อสองรอบทำงานเสร็จสลับลำดับกัน
+      - name: เช็กว่ายังเป็นโค้ด BE ล่าสุดของ main
+        id: latest
+        run: |
+          git fetch --quiet origin "${{ github.event.repository.default_branch }}"
+          if git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- "$APP_DIR" .github/workflows; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::main มีโค้ด $APP_DIR ใหม่กว่า commit นี้แล้ว รอบของ commit นั้นจะ deploy แทน"
+          fi
+      - name: ย้าย :latest มาที่ image ที่ผ่าน scan
+        if: steps.latest.outputs.deploy == 'true'
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          docker pull "$IMAGE:${GITHUB_SHA::7}"
+          docker tag "$IMAGE:${GITHUB_SHA::7}" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+      # imgURL บอก Render ให้ deploy image :SHA ที่เพิ่งผ่าน scan ตรง ๆ (ต้อง URL-encode: / → %2F, : → %3A)
+      # -f ทำให้ job พังเมื่อ Render ตอบกลับเป็น error เช่น 400 เมื่อ imgURL ไม่ตรงกับ image ของ service
+      - name: deploy ขึ้น Render
+        if: steps.latest.outputs.deploy == 'true'
         env:
           DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_BE }}
+        run: |
+          img=$(printf '%s' "docker.io/$IMAGE:${GITHUB_SHA::7}" | sed 's|/|%2F|g; s|:|%3A|g')
+          curl -fsS -X POST "$DEPLOY_HOOK&imgURL=$img"
 
   # ================= FRONTEND =================
 
@@ -168,6 +215,8 @@ jobs:
           cache: npm
           cache-dependency-path: FE/package-lock.json
       - run: npm ci
+      - name: lint (oxlint ตาม .oxlintrc.json)
+        run: npm run lint
       - run: npm test --if-present
       - run: npm run build # build ผ่าน = React compile ได้ไม่มี error
 
@@ -186,10 +235,10 @@ jobs:
         run: echo "$DOCKERHUB_TOKEN" | docker login -u "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
         env:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: build และ push :latest กับ :SHA
+      - name: build และ push :SHA
         run: |
-          docker build -t "$IMAGE:latest" -t "$IMAGE:${GITHUB_SHA::7}" ./FE
-          docker push "$IMAGE" --all-tags
+          docker build -t "$IMAGE:${GITHUB_SHA::7}" ./FE
+          docker push "$IMAGE:${GITHUB_SHA::7}"
 
   scan-fe:
     needs: build-fe
@@ -199,17 +248,51 @@ jobs:
     steps:
       - name: trivy รายงาน
         run: |
-          docker run --rm aquasec/trivy:0.58.0 image --exit-code 0 \
+          docker run --rm "$TRIVY_IMAGE" image --exit-code 0 \
             --severity HIGH,CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
       - name: trivy ด่านตรวจ CRITICAL
         run: |
-          docker run --rm aquasec/trivy:0.58.0 image --exit-code 1 \
+          docker run --rm "$TRIVY_IMAGE" image --exit-code 1 \
             --severity CRITICAL --ignore-unfixed --no-progress "$IMAGE:${GITHUB_SHA::7}"
 
+  # ขั้นตอนเดียวกับ deploy-be
   deploy-fe:
     needs: scan-fe
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-fe
+      cancel-in-progress: false
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/portfolio-fe
+      APP_DIR: FE
     steps:
-      - run: curl -fsS -X POST "$DEPLOY_HOOK"
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: เช็กว่ายังเป็นโค้ด FE ล่าสุดของ main
+        id: latest
+        run: |
+          git fetch --quiet origin "${{ github.event.repository.default_branch }}"
+          if git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- "$APP_DIR" .github/workflows; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::main มีโค้ด $APP_DIR ใหม่กว่า commit นี้แล้ว รอบของ commit นั้นจะ deploy แทน"
+          fi
+      - name: ย้าย :latest มาที่ image ที่ผ่าน scan
+        if: steps.latest.outputs.deploy == 'true'
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          docker pull "$IMAGE:${GITHUB_SHA::7}"
+          docker tag "$IMAGE:${GITHUB_SHA::7}" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+      - name: deploy ขึ้น Render
+        if: steps.latest.outputs.deploy == 'true'
         env:
           DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_FE }}
+        run: |
+          img=$(printf '%s' "docker.io/$IMAGE:${GITHUB_SHA::7}" | sed 's|/|%2F|g; s|:|%3A|g')
+          curl -fsS -X POST "$DEPLOY_HOOK&imgURL=$img"

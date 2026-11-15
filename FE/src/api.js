@@ -9,7 +9,8 @@ export async function sendWithRetry(message, onRetry) {
       if (typeof res.data?.reply === 'string') return res.data.reply;
     } catch (err) {
       // 400 = ข้อความไม่ถูกต้อง (ว่าง/ยาวเกิน) ส่งซ้ำก็ไม่หาย แจ้งผู้ใช้ทันที
-      if (err.response?.status === 400) throw err;
+      // 429 = ส่งถี่เกินกำหนด ไม่ใช่ BE หลับ จึงไม่ส่งซ้ำเอง ให้ผู้ใช้รอแล้วส่งใหม่
+      if ([400, 429].includes(err.response?.status)) throw err;
     }
     onRetry?.(i + 1);
     await new Promise((r) => setTimeout(r, 10000));
