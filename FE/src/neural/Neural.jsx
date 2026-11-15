@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from '../Link.jsx';
 import { PEOPLE, MEMBERS, PROJECT, REPO_URL } from '../data/team.js';
 import { useReducedMotion, copyText } from '../hooks.js';
-import { createNetwork, skillOwners, skillLabel, COL } from './network.js';
+import { ProjectItem, ProjectList } from '../Projects.jsx';
+import { createNetwork, skillOwners, skillLabel, projectNodeId, projectFromNode, COL } from './network.js';
 import './neural.css';
 
 export default function Neural() {
@@ -71,8 +72,21 @@ export default function Neural() {
         </div>
         <div className="chips">{p.skills.map((s) => <span key={s} className="chip">{s}</span>)}</div>
         <p>{p.work}</p>
+        <ProjectList projects={p.projects} level={3} onPick={(id) => select(projectNodeId(p.key, id))} />
         <p className="mail"><button className="copy" type="button" onClick={() => copy(p.email)}>{p.email}</button></p>
         {back}
+      </>
+    );
+  } else if (projectFromNode(selected)) {
+    const { member, project } = projectFromNode(selected);
+    panel = (
+      <>
+        <p className="kicker">ผลงานส่วนตัว · {PEOPLE[member].name.split(' ')[0]}</p>
+        <ProjectItem project={project} detailed level={2} />
+        <div className="row">
+          <button className="btn" type="button" onClick={() => select(member)}>← {PEOPLE[member].name.split(' ')[0]}</button>
+          <button className="btn" type="button" onClick={() => select('core', false)}>ดูทั้งกลุ่ม</button>
+        </div>
       </>
     );
   } else if (selected === 'work') {
@@ -183,6 +197,7 @@ export default function Neural() {
                 <h2>{m.name} · {m.role}</h2>
                 <p>ทักษะ: {m.skills.join(', ')}</p>
                 <p>{m.work}</p>
+                <ProjectList projects={m.projects} detailed level={3} />
                 <p className="mail">{m.email}</p>
               </section>
             ))}

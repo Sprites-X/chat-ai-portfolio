@@ -37,6 +37,14 @@ function buildGraph() {
   });
   link('core', 'work', 170);
   link('core', 'contact', 150);
+  // ผลงานส่วนตัวของสมาชิก (projects ใน data/team.js) เป็นจุดสีทองที่ต่อกับเจ้าของ
+  ['w', 'n', 'p'].forEach((m) =>
+    (PEOPLE[m].projects || []).forEach((pj) => {
+      const id = projectNodeId(m, pj.id);
+      add(id, pj.short || pj.name, 'proj', 11, COL.work);
+      link(m, id, 125);
+    }),
+  );
   Object.entries(SKILLS).forEach(([m, list]) =>
     list.forEach((s) => {
       const id = 's:' + s;
@@ -48,6 +56,17 @@ function buildGraph() {
     }),
   );
   return { nodes, edges, byId };
+}
+
+// id ของจุดผลงานส่วนตัว: pj:<สมาชิก>:<โปรเจกต์> เช่น pj:p:yolo
+export const projectNodeId = (member, projectId) => `pj:${member}:${projectId}`;
+
+// อ่านกลับจาก id ของจุด ได้ { member, project } หรือ null ถ้าไม่ใช่จุดผลงาน
+export function projectFromNode(nodeId) {
+  const [kind, member, projectId] = String(nodeId).split(':');
+  if (kind !== 'pj' || !PEOPLE[member]) return null;
+  const project = (PEOPLE[member].projects || []).find((p) => p.id === projectId);
+  return project ? { member, project } : null;
 }
 
 // ทักษะนี้ใครใช้บ้าง (ใช้ในแผงข้อมูล)
@@ -178,7 +197,8 @@ export function createNetwork(canvas, { leftBound, narrow, reduce, onPick }) {
       ['w', 'n', 'p', 'work', 'contact'].forEach((m, i) => fire('core', m, COL.gold, i * 0.08));
       return;
     }
-    if (byId[id].kind === 'skill') {
+    // ทักษะและผลงานส่วนตัวไม่ได้ต่อกับ core ตรง ๆ จึงยิงจาก core ไปหาเจ้าของก่อน แล้วค่อยต่อไปที่จุดนั้น
+    if (byId[id].kind === 'skill' || byId[id].kind === 'proj') {
       edges.filter((e) => e.a.id === id || e.b.id === id).forEach((e) => {
         const m = e.a.id === id ? e.b.id : e.a.id;
         fire('core', m, byId[m].color, 0);
@@ -187,7 +207,7 @@ export function createNetwork(canvas, { leftBound, narrow, reduce, onPick }) {
       return;
     }
     fire('core', id, byId[id].color, 0);
-    edges.filter((e) => e.a.id === id && e.b.kind === 'skill').forEach((e, i) => fire(id, e.b.id, byId[id].color, 0.7 + i * 0.06, 1.8));
+    edges.filter((e) => e.a.id === id && (e.b.kind === 'skill' || e.b.kind === 'proj')).forEach((e, i) => fire(id, e.b.id, byId[id].color, 0.7 + i * 0.06, 1.8));
   }
 
   // ---------- วาด ----------
@@ -266,7 +286,7 @@ export function createNetwork(canvas, { leftBound, narrow, reduce, onPick }) {
         ctx.stroke();
       }
       const big = n.kind !== 'skill';
-      ctx.font = big ? `600 ${n.kind === 'core' ? 15 : 14}px Mitr, 'Noto Sans Thai', sans-serif` : `500 11.5px 'Noto Sans Thai', sans-serif`;
+      ctx.font = big ? `600 ${n.kind === 'core' ? 15 : n.kind === 'proj' ? 13 : 14}px Mitr, 'Noto Sans Thai', sans-serif` : `500 11.5px 'Noto Sans Thai', sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       const ty = n.y + n.drawR + (big ? 8 : 5);

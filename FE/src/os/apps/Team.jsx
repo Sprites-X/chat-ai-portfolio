@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { MEMBERS } from '../../data/team.js';
+import { ProjectList } from '../../Projects.jsx';
 import { useOs } from '../osContext.js';
 
 const AVATAR = { w: 'ว', n: 'ณ', p: 'พ' };
@@ -48,6 +49,7 @@ export default function Team() {
           </div>
           <div className="chips">{m.skills.map((s) => <span key={s} className="chip">{s}</span>)}</div>
           <p>{m.work}</p>
+          <ProjectList projects={m.projects} detailed level={4} />
           <p className="pf-mail">{m.email}</p>
           <div className="links">
             {/* ส่งคำถามจริงไปที่ AI ผ่านแอปแชต */}

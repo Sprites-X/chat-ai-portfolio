@@ -34,6 +34,7 @@ const initDb = async () => {
 };
 
 
+// ข้อมูลที่ AI ใช้ตอบ ต้องตรงกับที่หน้าเว็บแสดง (FE/src/data/team.js) ถ้าแก้ที่หนึ่งให้แก้อีกที่ด้วย
 const PORTFOLIO_CONTEXT = `
 ชื่อกลุ่ม ByteMind
 1. ข้อมูลภาพรวมกลุ่ม
@@ -50,6 +51,10 @@ const PORTFOLIO_CONTEXT = `
 2.พงศกร ศรีทอง(Phongsakon)(สาย DevOps)
  ทักษะ: Docker, Nginx, GitHub Actions (CI/CD), Trivy, Render, Unit Test (node:test), Git/GitHub
  ผลงาน / หน้าที่: สร้าง repo กลุ่มและวางโครง BE/FE ทำ Dockerfile ของ BE กับ FE และ Nginx Proxy ที่ส่ง /api ต่อไปหา BE เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ โดย build เฉพาะฝั่งที่โค้ดเปลี่ยน เขียน test ของ API ตั้งกฎป้องกัน main ให้ต้องผ่าน PR และ test ก่อน merge และดูแลค่าลับไม่ให้หลุดเข้า repo
+ ผลงานส่วนตัว (นอกจากโปรเจกต์นี้):
+ - YOLO Inference Optimization Benchmark (งานเดี่ยว, 2026, github.com/Sprites-X/YOLO-Inference-Optimization) ใช้ Python, PyTorch, ONNX Runtime, TensorRT 10, CUDA: วัดความเร็ว YOLOv8n 7 แบบบน CPU และ RTX 5060 โดยเช็กผลทุกแบบกับ PyTorch ก่อนจับเวลา TensorRT FP16 ได้ 702 FPS เร็วกว่า PyTorch บน GPU เดียวกัน 2.60 เท่าโดย mAP50-95 เท่าเดิม ใช้ profiling รายเลเยอร์อธิบายว่าทำไม INT8 ทั้งช้ากว่าและแม่นน้อยกว่าบนโมเดลนี้ ไล่หาสาเหตุที่ mAP ได้ 0.365 ไม่ตรงกับ 0.373 ของ Ultralytics จนพบว่ามาจาก NMS ที่เลือก label เดียว และล็อก dependency พร้อมขั้นตรวจ environment
+ - ERP Helpdesk Agent (งานเดี่ยว, 2026, github.com/Sprites-X/erp-helpdesk-agent) ใช้ Python, LangGraph, ChromaDB, Ollama, pytest, GitHub Actions: ผู้ช่วย helpdesk ภาษาไทยแบบหลาย agent รันบนเครื่องตัวเอง ตอบคำถามโปรแกรม ERP จากคู่มือพร้อมประโยคหลักฐานที่โค้ดตรวจว่ามีอยู่จริง ถ้าคู่มือไม่มีคำตอบจะเปิด ticket แทนการเดา ตัดสินใจถูก 19 จาก 20 ข้อกับคำถามที่ไม่เคยเห็นและไม่เคยตอบข้อที่ควรเปิด ticket ลดเวลาตอบจาก 10.7 เหลือ 2.8 วินาทีหลังพบว่า localhost บน Windows เสียเวลากับ IPv6 มี unit test 76 ข้อรันใน CI
+ - TurtleBot3 Person Detection (งานกลุ่ม 3 คน วิชา Robotics, 2026) ใช้ ROS 2 Humble, Python, YOLO: หุ่น TurtleBot3 ในซิมเรียก ROS 2 service ตรวจจับคนด้วย YOLO ทุก 0.5 เมตรที่เดินแล้วบันทึกผลพร้อมตำแหน่ง พงศกรเขียน node นับระยะทางจาก odometry (subscribe /odom แล้วเรียก service) และวางแผนงานของทั้งโปรเจกต์
 
 3.ณัฐนิชา ภูสิงห์(Natnicha)(สาย Backend)
 ทักษะ: Node.js, Express, Gemini API Integration, Automated Testing (node:test), RESTful API Design, Git/GitHub

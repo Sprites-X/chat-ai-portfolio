@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { navigate } from '../router.js';
 import { PEOPLE, MEMBERS, REPO_URL } from '../data/team.js';
+import { ProjectList } from '../Projects.jsx';
 import { useMedia, useReducedMotion, useViewport, storage } from '../hooks.js';
 import { SCENES, IMAGES, ALT, HOT, POINTS, OBJECTS, objectAt, boxStyle, unionBox } from './scene.js';
 import { initialTimeOfDay, TOD_KEY } from './tod.js';
@@ -269,6 +270,7 @@ export default function Room() {
               <p className="role">{PEOPLE[card.key].role}</p>
               <div className="chips">{PEOPLE[card.key].skills.map((s) => <span key={s} className="chip">{s}</span>)}</div>
               <p>{PEOPLE[card.key].work}</p>
+              <ProjectList projects={PEOPLE[card.key].projects} level={3} />
               <p className="mail">{PEOPLE[card.key].email}</p>
             </>
           ) : (

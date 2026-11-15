@@ -1,0 +1,14 @@
+/* ผลงานส่วนตัว (Projects.jsx) ใช้ในหลายหน้าที่สีพื้นต่างกัน จึงอิงสีตัวอักษรของหน้านั้น (currentColor) แทนการกำหนดสีเอง */
+.projects { display: grid; gap: 10px; margin: 0; }
+.projects-title { margin: 4px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+.project { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.project-name { margin: 0; font-size: 16px; line-height: 1.35; }
+/* หน้ารายละเอียดโปรเจกต์เดียว (Neural) ชื่อเป็น h2 จึงใหญ่ขึ้น และไม่ต้องมีเส้นคั่นด้านบน */
+h2.project-name { font-size: 24px; }
+.project:has(> h2) { border-top: 0; padding-top: 0; }
+.project-pick { all: unset; cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.project-pick:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
+.project-meta { margin: 0; font-size: 13px; opacity: 0.75; }
+.project-meta a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.project-summary { margin: 0; font-size: 14px; line-height: 1.6; }
+.project-points { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 14px; line-height: 1.6; }
