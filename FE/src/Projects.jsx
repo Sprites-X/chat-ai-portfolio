@@ -16,6 +16,12 @@ export function ProjectList({ projects, detailed = false, level = 3, onPick }) {
   );
 }
 
+// ป้ายของลิงก์: repo บน GitHub ขึ้น "GitHub" ลิงก์อื่น (เช่นหน้า demo หรือฟอร์ม) ขึ้น "ลองใช้" หรือตั้งเองด้วย urlLabel
+function linkLabel(p) {
+  if (p.urlLabel) return p.urlLabel;
+  return /^https:\/\/github\.com\//.test(p.url) ? 'GitHub' : 'ลองใช้';
+}
+
 export function ProjectItem({ project: p, detailed = false, level = 3, onPick }) {
   const H = `h${Math.min(6, Math.max(2, level))}`;
   return (
@@ -32,7 +38,7 @@ export function ProjectItem({ project: p, detailed = false, level = 3, onPick })
         {p.url && (
           <>
             {' · '}
-            <a href={p.url} target="_blank" rel="noopener">GitHub ↗</a>
+            <a href={p.url} target="_blank" rel="noopener">{linkLabel(p)} ↗</a>
           </>
         )}
       </p>
