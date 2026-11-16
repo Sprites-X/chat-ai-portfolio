@@ -10,15 +10,6 @@ export const PEOPLE = {
     skills: ['React', 'JavaScript', 'HTML/CSS', 'UI/UX', 'Component Design'],
     work: 'ทำหน้าเว็บ UI ทั้งหมด ทำปุ่ม ออกแบบการจัดวางคอมโพเนนต์ และทำหน้าแชตโต้ตอบให้ใช้ง่ายสบายตา',
     email: 'wannaporn.kaeo@bumail.net',
-  },
-  n: {
-    key: 'n',
-    name: 'ณัฐนิชา ภูสิงห์',
-    en: 'Natnicha',
-    role: 'Backend Developer',
-    skills: ['Node.js', 'Express', 'Gemini API', 'Automated Testing (node:test)', 'RESTful API Design', 'Git/GitHub'],
-    work: 'พัฒนาและดูแล Backend API /api/chat ทั้งหมด เชื่อมต่อ Gemini API เขียนระบบสลับโมเดลอัตโนมัติเมื่อเจอ 429/500/503 จัดการระบบตอบรับสำรอง และเขียน Unit Test ก่อนส่งโค้ดขึ้นระบบจริง',
-    email: 'natnicha.phoo@bumail.net',
     projects: [
       {
         id: 'po-invoice-automation',
@@ -49,6 +40,15 @@ export const PEOPLE = {
       },
     ],
   },
+  n: {
+    key: 'n',
+    name: 'ณัฐนิชา ภูสิงห์',
+    en: 'Natnicha',
+    role: 'Backend Developer',
+    skills: ['Node.js', 'Express', 'Gemini API', 'Automated Testing (node:test)', 'RESTful API Design', 'Git/GitHub'],
+    work: 'พัฒนาและดูแล Backend API /api/chat ทั้งหมด เชื่อมต่อ Gemini API เขียนระบบสลับโมเดลอัตโนมัติเมื่อเจอ 429/500/503 จัดการระบบตอบรับสำรอง และเขียน Unit Test ก่อนส่งโค้ดขึ้นระบบจริง',
+    email: 'natnicha.phoo@bumail.net',
+  },
   p: {
     key: 'p',
     name: 'พงศกร ศรีทอง',
@@ -58,7 +58,8 @@ export const PEOPLE = {
     work: 'สร้าง repo กลุ่มและวางโครง BE/FE ทำ Dockerfile และ Nginx Proxy เขียน pipeline GitHub Actions ให้ test → build → สแกนช่องโหว่ → deploy ขึ้น Render อัตโนมัติ (build เฉพาะฝั่งที่เปลี่ยน) เขียน test API ตั้งกฎป้องกัน main และดูแลค่าลับ',
     email: 'phongsakon.sith@bumail.net',
     // ผลงานส่วนตัว (นอกจากโปรเจกต์นี้) แสดงในห้อง, แอป team ของ OS และ Neural
-    // สมาชิกคนอื่นเพิ่มได้ด้วยรูปแบบเดียวกัน แล้วเติมใน PORTFOLIO_CONTEXT ของ BE/index.js ด้วย AI จะได้ตอบได้
+    // สมาชิกคนอื่นเพิ่มได้ด้วยรูปแบบเดียวกัน (ใส่ในก้อนของตัวเอง: w, n หรือ p) แล้วเติมใน PORTFOLIO_CONTEXT ของ BE/index.js ด้วย AI จะได้ตอบได้
+    // url ของ github.com ขึ้นป้าย "GitHub ↗" ลิงก์อื่นขึ้น "ลองใช้ ↗" (ตั้งป้ายเองได้ด้วย urlLabel)
     projects: [
       {
         id: 'yolo',
