@@ -19,6 +19,35 @@ export const PEOPLE = {
     skills: ['Node.js', 'Express', 'Gemini API', 'Automated Testing (node:test)', 'RESTful API Design', 'Git/GitHub'],
     work: 'พัฒนาและดูแล Backend API /api/chat ทั้งหมด เชื่อมต่อ Gemini API เขียนระบบสลับโมเดลอัตโนมัติเมื่อเจอ 429/500/503 จัดการระบบตอบรับสำรอง และเขียน Unit Test ก่อนส่งโค้ดขึ้นระบบจริง',
     email: 'natnicha.phoo@bumail.net',
+    projects: [
+      {
+        id: 'po-invoice-automation',
+        name: 'ระบบอ่านและประมวลผลเอกสาร PO / Invoice อัตโนมัติด้วย n8n และ Gemini AI',
+        short: 'PO / Invoice AI',
+        meta: 'งานเดี่ยว · 2026',
+        url: 'https://kookkao-project.app.n8n.cloud/form/f4f0308e-14c6-4652-ad7e-4eb48516aeb0',
+        stack: ['n8n', 'Gemini AI'],
+        summary: 'ระบบรับและสกัดข้อมูลจากเอกสาร PO และ Invoice อัตโนมัติผ่าน Webform ด้วย AI',
+        points: [
+          'สร้าง Workflow อัตโนมัติบน n8n เพื่อรับไฟล์เอกสาร PO และ Invoice ผ่านหน้า Webform',
+          'เชื่อมต่อ Gemini AI สำหรับอ่าน วิเคราะห์ และดึงข้อมูลสำคัญออกจากเอกสารอย่างแม่นยำ',
+          'ลดขั้นตอนและเวลาในการคีย์ข้อมูลเอกสารด้วยตนเอง รวมถึงลดความผิดพลาดในการทำงาน',
+        ],
+      },
+      {
+        id: 'bu-spacehub',
+        name: 'BU SpaceHub',
+        short: 'BU SpaceHub',
+        meta: 'งานกลุ่ม · 2026',
+        stack: ['UI/UX', 'Figma'],
+        summary: 'แพลตฟอร์มจัดการและจองพื้นที่การใช้งานภายในมหาวิทยาลัยกรุงเทพ',
+        points: [
+          'ออกแบบระบบและประสบการณ์ผู้ใช้งาน (UI/UX) เพื่ออำนวยความสะดวกในการค้นหาและจองพื้นที่',
+          'รับผิดชอบหลักในส่วนการออกแบบ UI/UX Flow และโครงสร้างหน้าจอทั้งหมดของระบบ',
+          'ช่วยให้ผู้ใช้งานเข้าถึงและจัดการพื้นที่ส่วนกลางได้ง่ายและเป็นระบบมากขึ้น',
+        ],
+      },
+    ],
   },
   p: {
     key: 'p',
