@@ -47,7 +47,36 @@ export const PEOPLE = {
     role: 'Backend Developer',
     skills: ['Node.js', 'Express', 'Gemini API', 'Automated Testing (node:test)', 'RESTful API Design', 'Git/GitHub'],
     work: 'พัฒนาและดูแล Backend API /api/chat ทั้งหมด เชื่อมต่อ Gemini API เขียนระบบสลับโมเดลอัตโนมัติเมื่อเจอ 429/500/503 จัดการระบบตอบรับสำรอง และเขียน Unit Test ก่อนส่งโค้ดขึ้นระบบจริง',
-    email: 'natnicha.phoo@bumail.net',
+    email: 'natnicha.phoo@bumail.net',   
+    projects: [
+      {
+        id: 'satellite-etl-pipeline',
+        name: 'Satellite Orbital Catalog ETL Pipeline',
+        short: 'Satellite ETL',
+        meta: 'งานกลุ่ม 3 คน · วิชา Big Data (AIE321) · 2026',
+        stack: ['Python', 'PostgreSQL', 'SQL', 'Pandas', 'Git/GitHub'],
+        summary: 'ระบบ Data Engineering และ ETL Pipeline สำหรับจัดการข้อมูลวัตถุในวงโคจรกว่า 5.7 ล้านแถว แยกโครงสร้างข้อมูลดิบและข้อมูลพร้อมใช้งานบน PostgreSQL',
+        points: [
+          'รับผิดชอบส่วน Data Engineering & ETL Pipeline ออกแบบโครงสร้างฐานข้อมูล PostgreSQL (kaggle_db) แยกตารางข้อมูลดิบ (Raw) และข้อมูลพร้อมใช้งาน (Cleaned) ออกจากกันอย่างชัดเจน',
+          'พัฒนาสคริปต์นำเข้าข้อมูล (ingest.py) รองรับข้อมูลขนาดใหญ่กว่า 5.7 ล้านแถว และแก้ปัญหาหน่วยความจำเต็ม (Out of Memory) ด้วยการปรับมาใช้เทคนิค In-Database SQL Cleaning (DISTINCT ON และ COALESCE) ประมวลผลใน PostgreSQL โดยตรง',
+          'ได้ตารางข้อมูลสะอาดพร้อมใช้งานครบ 4 ตาราง (ข้อมูลสถานะปัจจุบัน 17,861 แถว และข้อมูลอนุกรมเวลาย้อนหลัง 5,681,284 แถว) พร้อมจัดทำคู่มือและส่งมอบโค้ดให้ทีม EDA และ Machine Learning นำไปวิเคราะห์ต่อ',
+        ],
+      },
+      {
+        id: 'student-project-db',
+        name: 'Student Project Management Database System',
+        short: 'Project DB (AIE313)',
+        meta: 'วิชา Databases (AIE313) · 2026',
+        stack: ['PostgreSQL', 'Supabase', 'SQL Triggers', 'Database Design'],
+        summary: 'ระบบฐานข้อมูลบน Supabase สำหรับจัดการโครงการนักศึกษา งบประมาณ การจองสถานที่ ยืมอุปกรณ์ และใบลา ครบวงจร 23 ตาราง พร้อมระบบตรวจสอบอัตโนมัติ',
+        points: [
+          'ออกแบบโครงสร้างฐานข้อมูลเชิงสัมพันธ์บน Supabase ครบทั้ง 23 ตาราง ครอบคลุมระบบโครงการ การเงิน การจองสถานที่/ล็อกร้านค้า การยืมอุปกรณ์ งานพาร์ทไทม์นักศึกษา และระบบใบลา พร้อมสร้าง Views รายงานสรุปผล 10 Views',
+          'เขียนระบบควบคุมความถูกต้องของข้อมูลอัตโนมัติด้วย SQL Triggers 4 ระบบหลัก (ป้องกันการจองสถานที่ซ้อนทับและนอกเวลา, เช็กยอดอุปกรณ์คงเหลืออัตโนมัติก่อนยืม, สร้างคำขอซื้อให้ฝ่ายการเงินอัตโนมัติเมื่อมีค่าเช่า และตรวจสอบสิทธิ์การอนุมัติของอาจารย์)',
+          'กำหนดกฎค่ามาตรฐาน (CHECK Constraints) และตั้งค่าสิทธิ์การเข้าถึง API ให้พร้อมเชื่อมต่อกับทีมพัฒนาหน้าเว็บ (Frontend) ได้ทันที',
+        ],
+      },
+    ],
+
   },
   p: {
     key: 'p',
