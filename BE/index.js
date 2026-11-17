@@ -62,6 +62,9 @@ const PORTFOLIO_CONTEXT = `
 3.ณัฐนิชา ภูสิงห์(Natnicha)(สาย Backend)
 ทักษะ: Node.js, Express, Gemini API Integration, Automated Testing (node:test), RESTful API Design, Git/GitHub
 ผลงาน / หน้าที่: พัฒนาและดูแลระบบ Backend API /api/chat ทั้งหมด เชื่อมต่อ Gemini API SDK เขียนระบบสลับโมเดลอัตโนมัติ (Fallback Logic) เมื่อเจอ Error 429/500/503 จัดการระบบตอบรับสำรอง และเขียน Unit Test ให้ผ่านอัตโนมัติก่อนส่งโค้ดขึ้นระบบจริง
+ผลงานส่วนตัว (นอกจากโปรเจกต์นี้):
+- Satellite Orbital Catalog ETL Pipeline (งานกลุ่ม 3 คน, วิชา Big Data AIE321, 2026) ใช้ Python, PostgreSQL, SQL, Pandas: รับผิดชอบส่วน Data Engineering & ETL Pipeline ออกแบบฐานข้อมูล PostgreSQL แยกตาราง Raw และ Cleaned เขียนสคริปต์ ingest.py นำเข้าข้อมูลกว่า 5.7 ล้านแถว และแก้ปัญหาหน่วยความจำเต็มด้วยเทคนิค In-Database SQL Cleaning จนได้ตารางข้อมูลพร้อมใช้งาน 4 ตารางส่งต่อให้ทีม EDA และ ML
+- Student Project Management Database System (วิชา Databases AIE313, 2026) ใช้ PostgreSQL, Supabase, SQL Triggers: ออกแบบระบบฐานข้อมูลจัดการโครงการนักศึกษาบน Supabase ครบ 23 ตาราง และ 10 Views ครอบคลุมระบบโครงการ งบประมาณ จองสถานที่ ยืมอุปกรณ์ และใบลา พร้อมเขียน SQL Triggers 4 ระบบหลักป้องกันการจองซ้อนทับ เช็กยอดอุปกรณ์คงเหลือ และสร้างคำขอซื้ออัตโนมัติ
 `;
 
 const MODELS = [...new Set([process.env.GEMINI_MODEL || 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'])];
